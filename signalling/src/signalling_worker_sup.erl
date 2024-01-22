@@ -1,0 +1,2 @@
+-module(signalling_worker_sup).
+-behaviour(gen_server).
