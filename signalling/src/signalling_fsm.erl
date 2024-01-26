@@ -1,6 +1,6 @@
 -module(signalling_fsm).
 -behaviour(gen_fsm).
-
+-define(Name, ?MODULE).
 %% API
 -export([start/1, stop/1, start_link/1]).
 -export([init/1, handle_event/3, handle_sync_event/4, handle_info/3,
@@ -8,10 +8,17 @@
          dummy_state/2, dummy_state/3]).
 -export([client_stacktrace/1]).
 
--record(state, {dummy}).
+-spec handle_signalling_message(Message::any())->any().
+handle_signalling_message(Pid,Message)->
+    gen_fsm:send_event(Pid,{signalling_message,Message}).
 
-start(Name) ->
-    gen_fsm:start(?MODULE, [Name], []).
+-record(state, {
+    current_state=idle,
+    connection
+}).
+
+start_link() ->
+    gen_fsm:start(?MODULE, [], []).
 
 stop(FsmRef) ->
     gen_fsm:stop(FsmRef).
@@ -20,7 +27,7 @@ start_link(Name) ->
     gen_fsm:start_link({local, Name}, ?MODULE, [Name], []).
 
 init(_Args) ->
-    {ok, dummy_state, #state{dummy=1}}.
+    {ok, idle, #state{}}.
 
 dummy_state(_Event, StateData) ->
     {next_state, dummy_state, StateData}.
