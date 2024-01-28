@@ -31,15 +31,23 @@ init([]) ->
                  intensity => 0,
                  period => 1},
     ChildSpecs = [
-        #{
-          id => signalling_server,
-          start=>{signalling_server,start_link,[]},
-          restart=>permanent,
-          shutdown=>1000,
-          type=>worker,
-          modules => [signalling_server]
-
-        }],
+        % #{
+        %   id => signalling_server,
+        %   start=>{signalling_server,start_link,[]},
+        %   restart=>permanent,
+        %   shutdown=>1000,
+        %   type=>worker,
+        %   modules => [signalling_server]
+        % },
+        % #{
+        %   id=>signalling_worker_sup,
+        %   start=>{signalling_worker_sup,start_link,[]},
+        %   restart=>permanent,
+        %   shutdown=>brutal_kill,
+        %   type=>supervisor,
+        %   modules=>[signalling_worker_sup]
+        % }
+    ],
     {ok, {SupFlags, ChildSpecs}}.
 
 %% internal functions
