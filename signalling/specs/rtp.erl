@@ -1,19 +1,18 @@
 -module(rtp).
--export([wrtc_args/0, ice_candidate/0, rtp_connection/0]).
+-export_type([wrtc_args/0, ice_candidate/0, rtp_connection/0]).
 
 
-%-------------------------
--record(ice_candidate, {
-    transport_protocol :: string(),
-    ip_address :: string(),
-    port :: integer(),
-    attributes :: [string()]
-}).
+-type ice_candidate()::{
+    Transport_Protocol :: string(),
+    IP_Address::string(),
+    Port ::integer(),
+    Attributes::string()
+}.
 
 -type rtp_connection() :: {
-        sdp_offer::string(),
-        sdp_answer::string(),
-        ice_candidates::[ice_candidate()]
+        Sdp_Offer :: string(),
+        Sdp_Answer ::string(),
+        Ice_Candidates::[ice_candidate()]
 }.
 -type wrtc_args() :: {}.
 
