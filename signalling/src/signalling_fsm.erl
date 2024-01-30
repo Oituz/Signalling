@@ -1,56 +1,49 @@
 -module(signalling_fsm).
--behaviour(gen_fsm).
+-behaviour(gen_statem).
+
+-export([stop/0, start_link/0]).
+-export([init/1, callback_mode/0, handle_event/4, terminate/3, code_change/4]).
+
+
 -define(Name, ?MODULE).
 %% API
--export([stop/1, start_link/1]).
--export([init/1, handle_event/3, handle_sync_event/4, handle_info/3,
-         terminate/3, code_change/4,
-         dummy_state/2, dummy_state/3]).
-         
--export([client_stacktrace/1]).
-
--spec handle_signalling_message(Pid::pid(),Message::any())->any().
-handle_signalling_message(Pid,Message)->
-    gen_fsm:send_event(Pid,{signalling_message,Message}).
-
 -record(state, {
     current_state=idle,
     connection
 }).
 
+%-----------------------API---------------------------------------
+-spec handle_signalling_message(Pid::pid(),Message::any())->any().
+handle_signalling_message(Pid,Message)->
+    gen_fsm:send_event(Pid,{signalling_message,Message}).
+
+
+
+stop() ->
+    gen_statem:stop(?MODULE).
+
 start_link() ->
-    gen_fsm:start(?MODULE, [], []).
-
-stop(FsmRef) ->
-    gen_fsm:stop(FsmRef).
-
-start_link(Name) ->
-    gen_fsm:start_link({local, Name}, ?MODULE, [Name], []).
+    gen_statem:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 init(_Args) ->
-    {ok, idle, #state{}}.
+    {ok, state, []}.
 
-dummy_state(_Event, StateData) ->
-    {next_state, dummy_state, StateData}.
+%----------------------------------------------------------------
+%% state_functions | handle_event_function | [_, state_enter].
+callback_mode() ->
+    handle_event_function.
 
-dummy_state(_Event, From, StateData) ->
-    gen_fsm:reply(From, ok),
-    {next_state, dummy_state, StateData}.
+handle_event(enter, _OldState, _State, _Data) ->
+    keep_state_and_data;
 
-handle_event(_Event, _StateName, StateData) ->
-    {next_state, dummy_state, StateData}.
+handle_event(_EventType, _EventContent, _State, _Data) ->
+    keep_state_and_data.
 
-handle_sync_event(_Event, From, _StateName, StateData) ->
-    gen_fsm:reply(From, ok),
-    {next_state, dummy_state, StateData}.
-
-handle_info(_Info, _StateName, StateData) ->
-    {next_state, dummy_state, StateData}.
-
-terminate(_Reason, _StateName, _StateData) ->
+terminate(_Reason, _State, _Data) ->
     ok.
 
-code_change(_OldVersion, _StateName, StateData, _Extra) ->
-    {ok, dummy_state, StateData}.
+code_change(_OldVsn, State, Data, _Extra) ->
+    {ok, State, Data}.
 
-client_stacktrace(Arg)->error.
+
+

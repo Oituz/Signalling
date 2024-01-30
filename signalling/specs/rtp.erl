@@ -3,18 +3,19 @@
 
 
 %-------------------------
-
--type rtp_connection() :: {
-        sdp_offer : string(),
-        sdp_answer : string(),
-        ice_candidates: [ice_candidate()]
-}.
--type wrtc_args() :: {}.
-
 -record(ice_candidate, {
     transport_protocol :: string(),
     ip_address :: string(),
     port :: integer(),
     attributes :: [string()]
 }).
+
+-type rtp_connection() :: {
+        sdp_offer::string(),
+        sdp_answer::string(),
+        ice_candidates::[ice_candidate()]
+}.
+-type wrtc_args() :: {}.
+
+
 

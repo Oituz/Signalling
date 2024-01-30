@@ -1,19 +1,35 @@
 -module(signalling_server).
 -behaviour(gen_server).
--define(Name, ?MODULE).
+
+-import(rtp,[rtp_connection/0,wrtc_args/0]).
 %% API
 -export([start_link/0]).
+-export([create_connection/1]).
+
+%-------------------------------- Callback API -----------------------------------------
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2]).
+
+%----------------------------------------------------------------------------------------
+
+
+-define(NAME, ?MODULE).
 -record(state, {peerMap=undefined}).
 
--spec initiate_session(Pid::pid(),PeerId::binary())->pid().
-initiate_session(Pid,PeerId)->
-    gen_server:call(Pid, {initiate_session,PeerId}).
+
+%---------------------------------API------------------------------------------------------
+
+-spec create_connection(Args::rtp:wrtc_args())->{ok,Connection::rtp:rtp_connection()} | {error,Reason::any()}.
+create_connection(Args)->
+    gen_server:call(?NAME,Args).
+    
 start_link() ->
-    gen_server:start_link({local, ?Name}, ?MODULE, [], []).
+    gen_server:start_link({local, ?NAME}, ?MODULE, [], []).
 
 init(_Args) ->
     {ok, #state{peerMap=dict:new()}}.
+
+
+%---------------------------------------------------------------------------------------------------
 
 handle_call(stop, _From, State) ->
     {stop, normal, stopped, State};
