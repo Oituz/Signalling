@@ -6,6 +6,7 @@
 
 -module(signalling_app).
 -import(rtp, [wrtc_args/0,rtp_connection/0]).
+-include("rtp.hrl").
 -behaviour(application).
 
 -export([start/2, stop/1]).

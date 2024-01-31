@@ -15,8 +15,7 @@
 %-----------------------API---------------------------------------
 -spec handle_signalling_message(Pid::pid(),Message::any())->any().
 handle_signalling_message(Pid,Message)->
-    gen_fsm:send_event(Pid,{signalling_message,Message}).
-
+    gen_statem:call(Pid, Message).
 
 
 stop() ->
