@@ -17,8 +17,8 @@ start(_StartType, _StartArgs) ->
 
 
 -spec create_connection(Args::rtp:wrtc_args())-> {ok,Connection::rtp:rtp_connection()} | {error,Reason::any()}.
-create_connection(Args)->
-    Connection=signalling_server:create_connection(Args),
+create_connection(Args=rtp:wrtc_args{id=Id})->
+    ProxyPid=signalling_server:create_proxy(Id),
     Connection.
 
 stop(_State) ->

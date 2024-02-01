@@ -9,6 +9,12 @@ all()->
 
 
 can_create_connection(_Config)-> 
-    meck:new(signalling_server,create_connection,)
+    Connection=#rtp:rtp_connection{},
+    meck:new(signalling_app,[non_strict]),
+    meck:expect(signalling_app,create_connection,fun()->Connection end),
+    Rez=signalling_app:create_connection(),
+    meck:validate(signalling_app),
+    meck:unload(signalling_app).
+    
 
 

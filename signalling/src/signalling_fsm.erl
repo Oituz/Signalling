@@ -1,7 +1,7 @@
 -module(signalling_fsm).
 -behaviour(gen_statem).
 
--export([stop/0, start_link/0]).
+-export([stop/0, start_link/0,handle_signalling_message/2,get_state/1]).
 -export([init/1, callback_mode/0, handle_event/4, terminate/3, code_change/4]).
 
 
@@ -13,6 +13,11 @@
 }).
 
 %-----------------------API---------------------------------------
+-spec get_state(Pid::pid())->{ok,State::atom()}.
+
+get_state(Pid)->
+    gen_statem:call(Pid,get_state).
+
 -spec handle_signalling_message(Pid::pid(),Message::any())->any().
 handle_signalling_message(Pid,Message)->
     gen_statem:call(Pid, Message).
