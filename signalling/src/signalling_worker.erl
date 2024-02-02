@@ -10,30 +10,47 @@
 }).
 
 -record(stm,{
-    pid
+    fsm_pid,
+    notify_pid
 }).
 start(Args)->
     #{id := Id}=Args,
     signalling_worker_sup:start_worker(Id).
 start_link(Id) ->
     gen_server:start_link({local, Id}, ?MODULE, [], []).
+-spec create_connection(Pid::pid(),PeerId::integer()|string(),NotifyPid::pid())->ok.
+create_connection(Pid,PeerId,NotifyPid)->
+    gen_server:cast(Pid,{initiate_negotiation, PeerId,NotifyPid}).
 
-create_connection(Pid,PeerId)->
-    gen_server:call(Pid,{initiate_negotiation, PeerId}).
-
+send_signalling_message(Pid,PeerId,Message)->
+    gen_server:cast(Pid, {signalling_message,PeerId,Message}).
 
 init(Id) ->
     {ok, #state{id=Id,stms=dict:new()}}.
 
+
+handle_cast({initiate_negotiation,PeerId,NotifyPid},State=#state{stms=StmMap,id=Id})->
+    case dict:find(PeerId,StmMap) of
+        {ok,#stm{fsm_pid=StmPid}} -> {ok,CurrentFsmState}=signalling_fsm:get_state(StmPid),
+                                     gen_server:reply(NotifyPid, {already_negotiating,{state,CurrentFsmState}}),
+                                     {noreply,State};
+        error -> {ok,Pid}=signalling_fsm:start({new_fsm,Id,PeerId,NotifyPid}),
+                 NewDict=dict:store(PeerId, #stm{fsm_pid=Pid,notify_pid=NotifyPid},StmMap),
+                 {noreply,State#state{stms=NewDict}}
+    end;
+handle_cast({signalling_message,PeerId,Message},State=#state{stms=StmMap,id=Id})->
+    case dict:find(PeerId,StmMap) of
+        error -> io:format("Could not find peer with id")
+                {noreply,State};
+        {ok,#stm{fsm_pid=StmPid}}-> ok=signalling_fsm:send_signalling_message(StmPid,Message),
+
+
+
 handle_call(stop, _From, State) ->
     {stop, normal, stopped, State};
 
-handle_call({initiate_negotiation,PeerId},From,State=#state{stms=StmMap})->
-    case dict:find(PeerId,StmMap) of
-        {ok,#stm{pid=StmPid}} -> {ok,CurrentFsmState}=signalling_fsm:get_state(StmPid),
-                                 {reply,{already_negotiating,{state,CurrentFsmState}},State};
-        error ->
-            
+
+       
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
