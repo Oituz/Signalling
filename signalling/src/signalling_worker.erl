@@ -11,7 +11,7 @@
 
 -record(stm,{
     fsm_pid,
-    notify_pid
+    notify_pids=[]
 }).
 start(Args)->
     #{id := Id}=Args,

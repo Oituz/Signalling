@@ -1,5 +1,5 @@
 % -module(rtp).
--export_type([rtp_connection/0,ice_candidate/0]).
+-export_type([rtp_connection/0,ice_candidate/0,wrtc_args/0]).
 
 -record(rtp_connection,{
             sdp_offer :: string(),
@@ -20,7 +20,8 @@
         port ::integer(),
         attributes::string()  
 }.
--record(wrtc_args,{}).
+-type wrtc_args()::#wrtc_args{ self_id::integer()|string()|binary() , connect_with_id::integer()|string()|binary()}.
+-record(wrtc_args,{ self_id,connect_with_id}).
 
 
 
