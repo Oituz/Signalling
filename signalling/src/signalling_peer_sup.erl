@@ -1,4 +1,4 @@
--module(signalling_worker_sup).
+-module(signalling_peer_sup).
 -behaviour(supervisor).
 
 %% API
@@ -21,11 +21,11 @@ init(_Args) ->
     ChildSpecifications = [
         #{
             id => some_worker,
-            start => {signalling_worker, start_link, []},
+            start => {signalling_peer, start_link, []},
             restart => permanent, % permanent | transient | temporary
             shutdown => 2000,
             type => worker, % worker | supervisor
-            modules => [some_worker]
+            modules => [signalling_peer]
         }
     ],
 

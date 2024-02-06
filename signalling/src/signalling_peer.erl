@@ -1,4 +1,4 @@
--module(signalling_worker).
+-module(signalling_peer).
 -behaviour(gen_server).
 
 %% API
@@ -6,12 +6,13 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 -record(state, {
     id,
-    stms
+    stms,
+    sfu_pid
 }).
 
 -record(stm,{
     fsm_pid,
-    notify_pids=[]
+    notify_pid
 }).
 start(Args)->
     #{id := Id}=Args,
@@ -26,7 +27,9 @@ send_signalling_message(Pid,PeerId,Message)->
     gen_server:cast(Pid, {signalling_message,PeerId,Message}).
 
 init(Id) ->
-    {ok, #state{id=Id,stms=dict:new()}}.
+
+    {ok, #state{id=Id,stms=dict:new(),sfu_pid = SfuPid}}.
+
 
 
 handle_cast({initiate_negotiation,PeerId,NotifyPid},State=#state{stms=StmMap,id=Id})->
@@ -40,10 +43,13 @@ handle_cast({initiate_negotiation,PeerId,NotifyPid},State=#state{stms=StmMap,id=
     end;
 handle_cast({signalling_message,PeerId,Message},State=#state{stms=StmMap,id=Id})->
     case dict:find(PeerId,StmMap) of
-        error -> io:format("Could not find peer with id")
+        error -> io:format("Could not find peer with id"),
                 {noreply,State};
-        {ok,#stm{fsm_pid=StmPid}}-> ok=signalling_fsm:send_signalling_message(StmPid,Message),
+        {ok,#stm{fsm_pid=StmPid}}-> ok=signalling_fsm:send_signalling_message(StmPid,Message)
+    end;
 
+handle_cast(_Msg, State) ->
+    {noreply, State}.
 
 
 handle_call(stop, _From, State) ->
@@ -54,8 +60,6 @@ handle_call(stop, _From, State) ->
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
-handle_cast(_Msg, State) ->
-    {noreply, State}.
 
 handle_info(_Info, State) ->
     {noreply, State}.
