@@ -1,4 +1,4 @@
--module(signalling_server).
+-module(signalling_sfu_server).
 -behaviour(gen_server).
 %% API
 -export([start_link/0]).
@@ -11,20 +11,20 @@
 
 
 -define(NAME, ?MODULE).
--record(state, {peerMap}).
+-record(state, {sfumap}).
 
 %---------------------------------API------------------------------------------------------
 
 
--spec create_connection(CallerPeerId::integer()|string(),APeerId::integer()|string())->{ok,ConnectionId::pid()} | {error,Reason::any()}.
-create_connection(CallerPeerId,APeerId)->
-    gen_server:call(?NAME,{create_connection,CallerPeerId,APeerId}).
+-spec create_connection(CallerPeerId::integer()|string(),MeetingId::integer()|string())->{ok,ConnectionId::pid()} | {error,Reason::any()}.
+create_connection(CallerPeerId,MeetingId)->
+    gen_server:call(?NAME,{create_connection,CallerPeerId,MeetingId}).
     
 start_link() ->
     gen_server:start_link({local, ?NAME}, ?MODULE, [], []).
 
 init(_Args) ->
-    {ok, #state{peerMap=dict:new()}}.
+    {ok, #state{sfumap=dict:new()}}.
 
 
 %---------------------------------------------------------------------------------------------------
@@ -34,14 +34,14 @@ handle_call(stop, _From, State) ->
 
 
     
- handle_call({create_connection,CallerPeerId,APeerId},From,State)->
-    case dict:find(CallerPeerId, State#state.peerMap) of
-        {ok,PeerPid} -> ok=signalling_worker:create_connection(PeerPid,APeerId,From),
+ handle_call({create_connection,CallerPeerId,SFUId},From,State)->
+    case dict:find(CallerPeerId, State#state.sfumap) of
+        {ok,PeerPid} -> ok=signalling_peer:create_connection(PeerPid,SFUId,From),
                         {noreply,State};
-         error -> {ok,WorkerPid}=signalling_worker:start(CallerPeerId),
-                  NewDict=dict:store(CallerPeerId, WorkerPid, State#state.peerMap),
-                  ok=signalling_worker:create_connection(WorkerPid,APeerId,From),
-                  {noreply,State#state{peerMap = NewDict}}
+         error -> {ok,WorkerPid}=signalling_peer:start(CallerPeerId),
+                  NewDict=dict:store(CallerPeerId, WorkerPid, State#state.sfumap),
+                  ok=signalling_peer:create_connection(WorkerPid,SFUId,From),
+                  {noreply,State#state{sfumap = NewDict}}
     end;   
 
 handle_call(_Request, _From, State) ->

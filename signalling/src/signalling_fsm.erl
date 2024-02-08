@@ -51,16 +51,12 @@ callback_mode() ->
 handle_event(fetch_own_candidates,idle,State=#state{peer_process_pid = PeerProcessPid},Data)->
     gen_server:cast(PeerProcessPid, fetch_own_candidates),
     {next_state,waiting_for_own_candidates,State,Data};
-handle_event({signalling_message,{receive_own_ice_candidates,Candidates}},waiting_for_own_candidates,State,_Data)->
+handle_event({signalling_message,{receive_own_ice_candidates,Candidates}},waiting_for_own_candidates,#state{peer_process_pid = PeerProcessPid}=State,_Data)->
     NewState=State#state{local_ice_candidates = Candidates},
-    {next_state,waiting_for_offer,NewState};
-handle_event({signalling_meessage,{receive_offer,OfferCandidates}},waiting_for_offer,State=#state{local_ice_candidates = LocalIceCandidates,peer_process_pid = PeerProcessPid},_Data)->
-    NewState=State#state{remote_ice_candidates = OfferCandidates},
-    gen_server:cast(PeerProcessPid,{send_answer,LocalIceCandidates}),
+    gen_server:cast(PeerProcessPid,{send_offer,Candidates}),
     {next_state,waiting_for_ack,NewState};
-handle_event({signalling_message,acknowledge},waiting_for_ack,State,Data)->
-    #state{local_ice_candidates = LocalIceCandidates,remote_ice_candidates=RemoteIceCandidates,notify_pid = NotifyPid ,peer_process_pid = PeerProcessPid}=State,
-    gen_server:cast(PeerProcessPid,{create_connection,LocalIceCandidates,RemoteIceCandidates,NotifyPid}),
+handle_event({signalling_message,acknowledge},waiting_for_ack,#state{peer_process_pid = PeerProcessPid}=State,Data)->
+    gen_server:cast(PeerProcessPid,ready_for_streaming),
     {next_state,connection_established,State};
 
 handle_event(enter, _OldState, _State, _Data) ->

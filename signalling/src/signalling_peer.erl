@@ -3,10 +3,9 @@
 
 %% API
 -export([start_link/1,start/1]).
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3,create_connection/2]).
 -record(state, {
     id,
-    stms,
     sfu_pid
 }).
 
@@ -15,42 +14,28 @@
     notify_pid
 }).
 start(Args)->
-    #{id := Id}=Args,
-    signalling_worker_sup:start_worker(Id).
+    signalling_peer_sup:start_worker(Args).
+
 start_link(Id) ->
     gen_server:start_link({local, Id}, ?MODULE, [], []).
--spec create_connection(Pid::pid(),PeerId::integer()|string(),NotifyPid::pid())->ok.
-create_connection(Pid,PeerId,NotifyPid)->
-    gen_server:cast(Pid,{initiate_negotiation, PeerId,NotifyPid}).
+-spec create_connection(PeerId::integer()|string(),NotifyPid::pid())->{ok,PeerPid::pid()}.
+create_connection(PeerId,MeetingId)->
+    {ok,PeerPid}=signalling_peer:start(#{id => PeerId}),
+    gen_server:call(PeerPid,{create_connection,MeetingId}).
 
-send_signalling_message(Pid,PeerId,Message)->
-    gen_server:cast(Pid, {signalling_message,PeerId,Message}).
-
-init(Id) ->
-
-    {ok, #state{id=Id,stms=dict:new(),sfu_pid = SfuPid}}.
+init(Args) ->
+    #{id :=Id}=Args,
+    {ok, #state{id=Id}}.
 
 
-
-handle_cast({initiate_negotiation,PeerId,NotifyPid},State=#state{stms=StmMap,id=Id})->
-    case dict:find(PeerId,StmMap) of
-        {ok,#stm{fsm_pid=StmPid}} -> {ok,CurrentFsmState}=signalling_fsm:get_state(StmPid),
-                                     gen_server:reply(NotifyPid, {already_negotiating,{state,CurrentFsmState}}),
-                                     {noreply,State};
-        error -> {ok,Pid}=signalling_fsm:start({new_fsm,Id,PeerId,NotifyPid}),
-                 NewDict=dict:store(PeerId, #stm{fsm_pid=Pid,notify_pid=NotifyPid},StmMap),
-                 {noreply,State#state{stms=NewDict}}
-    end;
-handle_cast({signalling_message,PeerId,Message},State=#state{stms=StmMap,id=Id})->
-    case dict:find(PeerId,StmMap) of
-        error -> io:format("Could not find peer with id"),
-                {noreply,State};
-        {ok,#stm{fsm_pid=StmPid}}-> ok=signalling_fsm:send_signalling_message(StmPid,Message)
-    end;
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
+
+handle_call({create_connection,MeetingId},_From,State=#state{id=PeerId})->
+      {ok,SfuPid}=signalling_sfu_server:create_connection(PeerId,MeetingId),
+      {reply,{ok,SfuPid},State};
 
 handle_call(stop, _From, State) ->
     {stop, normal, stopped, State};
