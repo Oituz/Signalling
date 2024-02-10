@@ -5,13 +5,12 @@
 -export([stop/0, start_link/0,send_signalling_message/2,get_state/1]).
 -export([init/1, callback_mode/0, handle_event/4, terminate/3, code_change/4]).
 
-
 -define(Name, ?MODULE).
 %% API
 -record(state, {
     current_state=idle,
     local_ice_candidates=[],
-    remote_ice_candidates=[],
+    
     notify_pid,
     peer_process_pid
 }).
@@ -39,24 +38,28 @@ stop() ->
 start_link(FsmData) ->
     gen_statem:start_link({local, ?MODULE}, ?MODULE, [FsmData], []).
 
-init({init_data,PeerProcessPid,NotifyPid}) ->
-    gen_fsm:send_event(self(), fetch_candidates),
+init(#{peer_process_pid:=PeerProcessPid,notify_pid:=NotifyPid}) ->
+    gen_fsm:send_event(self(), fetch_own_candidates),
     {ok, idle, #state{notify_pid = NotifyPid,peer_process_pid = PeerProcessPid}}.
 
 %----------------------------------------------------------------
 %% state_functions | handle_event_function | [_, state_enter].
 callback_mode() ->
     handle_event_function.
+handle_event(get_state,CurrentFsmState,State=#state{peer_process_pid = PeerProcessPid},_Data)->
+    signalling_peer:send_fsm_to_peer_message(PeerProcessPid,{current_state,CurrentFsmState}),
+    {keep_state,CurrentFsmState,State};
+
 
 handle_event(fetch_own_candidates,idle,State=#state{peer_process_pid = PeerProcessPid},Data)->
-    gen_server:cast(PeerProcessPid, fetch_own_candidates),
+    signalling_peer:send_fsm_to_peer_message(PeerProcessPid,fetch_own_candidates),
     {next_state,waiting_for_own_candidates,State,Data};
-handle_event({signalling_message,{receive_own_ice_candidates,Candidates}},waiting_for_own_candidates,#state{peer_process_pid = PeerProcessPid}=State,_Data)->
+handle_event({signalling_message,{candidates,Candidates}},waiting_for_own_candidates,#state{peer_process_pid = PeerProcessPid}=State,_Data)->
     NewState=State#state{local_ice_candidates = Candidates},
-    gen_server:cast(PeerProcessPid,{send_offer,Candidates}),
+    signalling_peer:send_fsm_to_peer_message(PeerProcessPid,{send_offer,Candidates}),
     {next_state,waiting_for_ack,NewState};
 handle_event({signalling_message,acknowledge},waiting_for_ack,#state{peer_process_pid = PeerProcessPid}=State,Data)->
-    gen_server:cast(PeerProcessPid,ready_for_streaming),
+    signalling_peer:send_fsm_to_peer_message(PeerProcessPid,ready_for_streaming),
     {next_state,connection_established,State};
 
 handle_event(enter, _OldState, _State, _Data) ->
