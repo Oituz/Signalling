@@ -2,7 +2,8 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1,start/1]).
+-export([fsm_message/2,caller_message/2]).
+-export([start_link/1]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3,join_meeting/2]).
 -record(state, {
     id,
@@ -19,11 +20,15 @@ start_link(Id) ->
 -spec join_meeting(PeerId::integer()|string(),MeetingId::integer()|string())->{ok,PeerPid::pid()}.
 join_meeting(PeerId,MeetingId)->
     {ok,PeerPid}=register_service:get_peer(PeerId),
-    gen_server:call(PeerPid,{join_meeting,MeetingId}).
+    gen_server:call(PeerPid,{caller_message,{join_meeting,MeetingId}}).
     
--spec send_fsm_to_peer_message(Pid::pid(),Message::any())->ok.
-send_fsm_to_peer_message(Pid,Message)->
-    gen_server:cast(Pid,{fsm_message,Message}).    
+-spec fsm_message(Pid::pid(),Message::any())->ok.
+fsm_message(Pid,Message)->
+    gen_server:cast(Pid,{fsm_message,Message}).   
+
+-spec caller_message(Pid::pid(),Message::any())-> ok.
+caller_message(Pid,Message)->
+    gen_server:cast(Pid, {caller_message,Message}). 
 
 init(Args) ->
     #{id :=Id}=Args,
@@ -36,22 +41,18 @@ handle_cast({fsm_message,fetch_own_candidates},State=#state{caller_pid = CallerP
 handle_cast({fsm_message,{send_offer,Candidates}},State=#state{fsm_pid = FsmPid})->
     signalling_fsm:send_signalling_message(FsmPid,acknowledge),
     {noreply,State#state{candidates = Candidates}};
-handle_cast({fsm_message,{send_offer,Candidates}},State=#state{fsm_pid = FsmPid})->
-    signalling_fsm:send_signalling_message(FsmPid,acknowledge),
-    {noreply,State#state{candidates = Candidates}};
 handle_cast({fsm_message,ready_for_streaming},State=#state{sfu_pid = SfuPid,candidates = Candidates})->
     ok=signalling_sfu:connect(SfuPid,#{peer_pid=>self(),candidates=>Candidates}),
     State#state.caller_pid ! connected,
     {noreply,State};
     
-handle_cast({candidates,Candidates},State=#state{fsm_pid = FsmPid})->
+handle_cast({caller_message,{candidates,Candidates}},State=#state{fsm_pid = FsmPid})->
     signalling_fsm:send_signalling_message(FsmPid,{candidates,Candidates}),
     {noreply,State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-
-handle_call({join_meeting,MeetingId},_From,State=#state{fsm_pid=undefined})->
+handle_call({caller_message,{join_meeting,MeetingId}},_From,State=#state{fsm_pid=undefined})->
     {ok,SfuPid}=register_service:get_sfu(MeetingId),
     FsmData=#{peer_process_pid=>self(),notify_pid=>self()},
     {ok,FsmPid}=signalling_fsm_sup:start(FsmData),
