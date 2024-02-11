@@ -4,11 +4,13 @@
 %% API
 -export([start_link/0]).
 -export([init/1]).
--export([start/1]).
-
+-export([start/1,remove/2]).
 
 start(PeerData)->
     supervisor:start_child(?MODULE, [PeerData]).
+
+remove(SupPid,PeerPid)->
+    supervisor:delete_child(SupPid,PeerPid).
 
 
 start_link() ->

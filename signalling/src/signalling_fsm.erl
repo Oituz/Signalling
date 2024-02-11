@@ -2,7 +2,7 @@
 -behaviour(gen_statem).
 
 -export([start/1]).
--export([stop/0, start_link/0,send_signalling_message/2,get_state/1]).
+-export([stop/0, start_link/1,send_signalling_message/2,get_state/1]).
 -export([init/1, callback_mode/0, handle_event/4, terminate/3, code_change/4]).
 
 -define(Name, ?MODULE).
@@ -27,6 +27,8 @@ get_state(Pid)->
     gen_statem:call(Pid,get_state).
 
 -spec send_signalling_message(Pid::pid(),Message::any())->ok.
+
+
 send_signalling_message(Pid,Message)->
     gen_statem:cast(Pid, {signalling_message,Message}).
 
@@ -39,7 +41,7 @@ start_link(FsmData) ->
     gen_statem:start_link({local, ?MODULE}, ?MODULE, [FsmData], []).
 
 init(#{peer_process_pid:=PeerProcessPid,notify_pid:=NotifyPid}) ->
-    gen_fsm:send_event(self(), fetch_own_candidates),
+    gen_statem:send_event(self(), fetch_own_candidates),
     {ok, idle, #state{notify_pid = NotifyPid,peer_process_pid = PeerProcessPid}}.
 
 %----------------------------------------------------------------

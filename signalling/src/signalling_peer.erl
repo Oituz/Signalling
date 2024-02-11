@@ -41,8 +41,8 @@ handle_cast({fsm_message,fetch_own_candidates},State=#state{caller_pid = CallerP
 handle_cast({fsm_message,{send_offer,Candidates}},State=#state{fsm_pid = FsmPid})->
     signalling_fsm:send_signalling_message(FsmPid,acknowledge),
     {noreply,State#state{candidates = Candidates}};
-handle_cast({fsm_message,ready_for_streaming},State=#state{sfu_pid = SfuPid,candidates = Candidates})->
-    ok=signalling_sfu:connect(SfuPid,#{peer_pid=>self(),candidates=>Candidates}),
+handle_cast({fsm_message,ready_for_streaming},State=#state{sfu_pid = SfuPid,candidates = Candidates,id=Id})->
+    ok=signalling_sfu:connect(SfuPid,#{peer_id=>Id,candidates=>Candidates}),
     State#state.caller_pid ! connected,
     {noreply,State};
     

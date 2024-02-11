@@ -16,7 +16,7 @@ start(_StartType, _StartArgs) ->
     signalling_sup:start_link().
 
 
--spec create_connection(Args::rtp:wrtc_args())-> {ok,Connection::rtp:rtp_connection()} | {error,Reason::any()}.
+-spec join_meeting(Args::rtp:wrtc_args())-> {ok,Connection::rtp:rtp_connection()} | {error,Reason::any()}.
 
 create_connection(Args=#rtp:wrtc_args{self_id=Id, connect_with_id=ConnectWithId})->
     ProxyPid=signalling_server:create_connection(Id,ConnectWithId),
