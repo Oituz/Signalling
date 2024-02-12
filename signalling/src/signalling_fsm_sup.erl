@@ -20,11 +20,11 @@ init(_Args) ->
     ChildSpecifications = [
         #{
             id => some_worker,
-            start => {some_worker, start_link, []},
+            start => {signalling_fsm, start_link, []},
             restart => permanent, % permanent | transient | temporary
             shutdown => 2000,
             type => worker, % worker | supervisor
-            modules => [some_worker]
+            modules => [signalling_fsm]
         }
     ],
 

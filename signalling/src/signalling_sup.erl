@@ -32,21 +32,38 @@ init([]) ->
                  period => 1},
     ChildSpecs = [
         #{
-          id => signalling_server,
-          start=>{signalling_server,start_link,[]},
+          id => signalling_sfu_sup,
+          start=>{signalling_sfu_sup,start_link,[]},
           restart=>permanent,
           shutdown=>1000,
           type=>worker,
-          modules => [signalling_server]
+          modules => [signalling_sfu_sup]
         },
-        #{
-          id=>signalling_worker_sup,
-          start=>{signalling_worker_sup,start_link,[]},
+         #{
+          id => signalling_peer_sup,
+          start=>{signalling_peer_sup,start_link,[]},
           restart=>permanent,
-          shutdown=>brutal_kill,
-          type=>supervisor,
-          modules=>[signalling_worker_sup]
+          shutdown=>1000,
+          type=>worker,
+          modules => [signalling_peer_sup]
+        },
+          #{
+          id => signalling_fsm_sup,
+          start=>{signalling_fsm_sup,start_link,[]},
+          restart=>permanent,
+          shutdown=>1000,
+          type=>worker,
+          modules => [signalling_fsm_sup]
+        },
+           #{
+          id => register_service,
+          start=>{register_service,start_link,[]},
+          restart=>permanent,
+          shutdown=>1000,
+          type=>worker,
+          modules => [register_service]
         }
+
     ],
     {ok, {SupFlags, ChildSpecs}}.
 

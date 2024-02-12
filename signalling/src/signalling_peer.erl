@@ -17,7 +17,7 @@
 start_link(Id) ->
     gen_server:start_link({local, Id}, ?MODULE, [], []).
 
--spec join_meeting(PeerId::integer()|string(),MeetingId::integer()|string())->{ok,PeerPid::pid()}.
+-spec join_meeting(PeerId::integer()|string(),MeetingId::integer()|string())->{ok,PeerPid::pid()} | {error,Reason::any()}.
 join_meeting(PeerId,MeetingId)->
     {ok,PeerPid}=register_service:get_peer(PeerId),
     gen_server:call(PeerPid,{caller_message,{join_meeting,MeetingId}}).
