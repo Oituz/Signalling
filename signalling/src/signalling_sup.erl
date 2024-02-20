@@ -47,14 +47,7 @@ init([]) ->
           type=>worker,
           modules => [signalling_peer_sup]
         },
-          #{
-          id => signalling_fsm_sup,
-          start=>{signalling_fsm_sup,start_link,[]},
-          restart=>permanent,
-          shutdown=>1000,
-          type=>worker,
-          modules => [signalling_fsm_sup]
-        },
+         
            #{
           id => register_service,
           start=>{register_service,start_link,[]},

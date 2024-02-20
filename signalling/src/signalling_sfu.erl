@@ -11,9 +11,9 @@
     pid,
     candidates
 }).
--spec connect(SfuPid::pid(),PeerData::#{peer_id=>integer()|string()|binary(),candidates=>list()})->ok | {error,Reason::any()}.
-connect(Pid,PeerData)->
-    gen_server:call(Pid,{connect,PeerData}).
+-spec connect(SfuPid::pid(),ConnectData::#{peer_id=>integer()|string()|binary(),candidates=>list()})->ok | {error,Reason::any()}.
+connect(Pid,ConnectData)->
+    gen_server:call(Pid,{connect,ConnectData}).
 start(Args)->
     signalling_sfu_sup:start(Args).
 stop(Name) ->
