@@ -5,13 +5,11 @@
 -export([start_link/0]).
 -export([init/1]).
 -export([start/1]).
--record(state,{
-    childrenMap
-}).
+
 
 
 start(SFUData)->
-    {ok,ChildPid}=supervisor:start_child(?MODULE, [SFUData]).
+   supervisor:start_child(?MODULE, [SFUData]).
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
