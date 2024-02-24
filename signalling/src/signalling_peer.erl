@@ -35,9 +35,9 @@ handle_cast(_Msg, State) ->
 
 
 
-handle_call({caller_message,{join_meeting,#{meeting_id:=MeetingId,candidates := Candidates}}},_From,State)->
+handle_call({caller_message,{join_meeting,#{meeting_id:=MeetingId,candidates := Candidates,tracks:=Tracks}}},_From,State)->
     {ok,SfuPid}=register_service:get_sfu(MeetingId),
-    ConnectData=#{peerId =>State#state.id,sfu_pid=>SfuPid,candidates=>Candidates},
+    ConnectData=#{peerId =>State#state.id,sfu_pid=>SfuPid,candidates=>Candidates,tracks=>Tracks},
     Result=signalling_sfu:connect(SfuPid,ConnectData),
     {reply,Result,State#state{sfu_pid = SfuPid,candidates = Candidates}};
    

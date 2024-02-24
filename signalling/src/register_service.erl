@@ -46,7 +46,7 @@ handle_call(stop, _From, State) ->
  handle_call({get_sfu,SFUId},_From,State)->
      case cache:lookup_sfu(SFUId) of
         not_found->{ok,SfuPid}=signalling_sfu_sup:start(#{id=>SFUId}),
-                               Data=#{sfu_pid=>SfuPid,sup_pid=>whereis(signalling_sfu_sup)},
+                               Data=#{sfu_pid=>SfuPid},
                                ok=cache:update_sfu(SFUId,Data),
                                {reply,{ok,SfuPid},State};
         {ok,SfuPid}-> {reply,{ok,SfuPid},State}
@@ -55,7 +55,7 @@ handle_call(stop, _From, State) ->
 handle_call({get_peer,PeerId},_From,State)->
     case cache:lookup_peer(PeerId) of
         not_found -> {ok,PeerPid}=signalling_peer_sup:start(#{id=>PeerId}),
-                     Data=#{sfu_pid=>PeerPid,sup_pid=>whereis(signalling_peer_sup)},
+                     Data=#{sfu_pid=>PeerPid},
                      ok=cache:update_peer(PeerId,Data),
                      {reply,{ok,PeerPid},State};
         {ok,PeerPid} -> {reply,{ok,PeerPid},State}
@@ -63,15 +63,15 @@ handle_call({get_peer,PeerId},_From,State)->
 
 handle_call({remove_peer,PeerId},_From,State)->
     case cache:lookup_peer(PeerId) of
-        {ok,#{peer_pid := PeerPid , sup_pid := SupPid}} -> Result=signalling_peer_sup:remove(SupPid,PeerPid),
-                                                           {reply,Result,State};
+        {ok,#{peer_pid := PeerPid }} -> erlang:exit(PeerPid, normal),
+                                                           {reply,ok,State};
         not_found -> {reply,ok,State}
     end;
 
 handle_call({remove_sfu,SfuId},_From,State)->
     case cache:lookup_sfu(SfuId) of
-        {ok,#{sfu_pid :=SFUPid  , sup_pid := SupPid}} -> Result=signalling_sfu_sup:remove(SupPid,SFUPid),
-                                                           {reply,Result,State};
+        {ok,#{sfu_pid :=SFUPid }} -> erlang:exit(SFUPid,normal),
+                                    {reply,ok,State};
         not_found -> {reply,ok,State}
     end;
 
