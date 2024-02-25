@@ -1,7 +1,7 @@
 -module(signalling_app_SUITE).
 -compile(export_all).
 -include_lib("common_test/include/ct.hrl").
--include("rtp.hrl").
+-include("../include/rtp.hrl").
 
 
 all()->

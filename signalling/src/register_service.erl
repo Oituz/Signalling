@@ -64,7 +64,7 @@ handle_call({get_peer,PeerId},_From,State)->
 handle_call({remove_peer,PeerId},_From,State)->
     case cache:lookup_peer(PeerId) of
         {ok,#{peer_pid := PeerPid }} -> erlang:exit(PeerPid, normal),
-                                                           {reply,ok,State};
+                                        {reply,ok,State};
         not_found -> {reply,ok,State}
     end;
 
