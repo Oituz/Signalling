@@ -63,15 +63,17 @@ handle_call({get_peer,PeerId},_From,State)->
 
 handle_call({remove_peer,PeerId},_From,State)->
     case cache:lookup_peer(PeerId) of
-        {ok,#{peer_pid := PeerPid }} -> erlang:exit(PeerPid, normal),
+        {ok,#{peer_pid := PeerPid }} -> cache:remove_peer(PeerId),
+                                        erlang:exit(PeerPid, normal),
                                         {reply,ok,State};
         not_found -> {reply,ok,State}
     end;
 
 handle_call({remove_sfu,SfuId},_From,State)->
     case cache:lookup_sfu(SfuId) of
-        {ok,#{sfu_pid :=SFUPid }} -> erlang:exit(SFUPid,normal),
-                                    {reply,ok,State};
+        {ok,#{sfu_pid :=SFUPid }} -> cache:remove_sfu(SfuId),  
+                                     erlang:exit(SFUPid,normal),
+                                     {reply,ok,State};
         not_found -> {reply,ok,State}
     end;
 

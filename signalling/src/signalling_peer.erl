@@ -11,8 +11,7 @@
 }).
 
 
-start_link(Id) ->
-    gen_server:start_link({local, Id}, ?MODULE, [], []).
+ 
 
 -spec join_meeting(PeerId::integer()|string(),MeetingId::integer()|string(),RTPParams::rtp:rtp_params())->{ok,PeerPid::pid()} | {error,Reason::any()}.
 join_meeting(PeerId,MeetingId,RTPParams)->
@@ -39,8 +38,26 @@ init(Args) ->
     {ok, #state{id=Id}}.
 
 handle_cast({stream_data,StreamData},State) when erlang:is_binary(StreamData)->
-    
     {noreply,State};
+
+
+handle_cast({caller_message,{update_candidates,Candidates}},State=#{id:=Id,sfu_pid := SfuPid})->
+    Message=#{peer_id=>Id,candidates=>Candidates},
+    ok=signalling_sfu:update_candidates(SfuPid,Message),
+    {noreply,State};
+
+handle_cast({caller_message,{update_tracks,Tracks}},State=#{id:=Id,sfu_pid := SfuPid})->
+    Message=#{peer_id=>Id,tracks=>Tracks},
+    ok=signalling_sfu:update_tracks(SfuPid,Message),
+    {noreply,State};
+
+handle_cast({caller_message,{update_constraints,Constraints}},State=#{id:=Id,sfu_pid := SfuPid})->
+    Message=#{peer_id=>Id,constraints=>Constraints},
+    ok=signalling_sfu:update_constraints(SfuPid,Message),
+    {noreply,State};
+
+
+
 handle_cast(_Msg, State) ->
     {noreply, State}.
 

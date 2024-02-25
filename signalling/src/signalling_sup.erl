@@ -32,6 +32,14 @@ init([]) ->
                  period => 1},
     ChildSpecs = [
         #{
+          id=>pg,
+          start=>{pg,start_link,[]},
+          restart=>permanent,
+          shutdown=>5000,
+          type=>worker,
+          modules=>[pg]
+        },
+        #{
           id => signalling_sfu_sup,
           start=>{signalling_sfu_sup,start_link,[]},
           restart=>permanent,

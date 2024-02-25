@@ -54,8 +54,16 @@ handle_call(stop, _From, State) ->
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
-handle_cast({update_candidates,#{peer_id:=_PeerId,candidates:=Candidates}},State)->
-    {noreply,State};
+handle_cast({update_candidates,#{peer_id:=PeerId,candidates:=Candidates}},State)->
+    case dict:find(PeerId, State#state.peers) of
+        error -> io:format("Could not find peer ~p",[PeerId]),
+                 {noreply,State};
+                 
+        {ok,PeerData}-> NewPeerData=inner_update_candidates(Candidates, PeerData),
+                        NewPeers=dict:store(PeerId, NewPeerData,State#state.peers),
+                        {noreply,State#state{peers = NewPeers}}
+    end;
+   
 handle_cast({update_constraints,#{peer_id:=PeerId,constraints:=Constraints}},State)->
     {noreply,State}; 
 handle_cast({update_tracks,#{peer_id:=PeerId,tracks:=Tracks}},State)->
@@ -81,4 +89,8 @@ compute_peer_data(ConnectParams,_State)->
             tracks=Tracks}}
     =ConnectParams,
     #peer_data{id = PeerId,pid = PeerPid, candidates=Candidates, tracks = Tracks, constraints = Constraints}.
+
+inner_update_candidates(Candidates,PeerData)->
+    PeerData#peer_data{candidates = Candidates}.
+
 
