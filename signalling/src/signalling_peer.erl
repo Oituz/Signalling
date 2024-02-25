@@ -11,7 +11,9 @@
 }).
 
 
- 
+start_link(PeerData) ->
+    #{id:=Id}=PeerData,
+    gen_server:start_link({local,Id},?MODULE,PeerData,[]).
 
 -spec join_meeting(PeerId::integer()|string(),MeetingId::integer()|string(),RTPParams::rtp:rtp_params())->{ok,PeerPid::pid()} | {error,Reason::any()}.
 join_meeting(PeerId,MeetingId,RTPParams)->
@@ -33,8 +35,8 @@ update_constraints(PeerPid,Constraints)->
 stream_data(PeerPid,StreamData)->
     gen_server:cast(PeerPid,{stream_data,StreamData}).
 
-init(Args) ->
-    #{id :=Id}=Args,
+init(PeerData) ->
+    #{id :=Id}=PeerData,
     {ok, #state{id=Id}}.
 
 handle_cast({stream_data,StreamData},State) when erlang:is_binary(StreamData)->
