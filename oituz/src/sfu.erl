@@ -39,10 +39,10 @@ start(Args)->
 stop(Name) ->
     gen_server:call(Name, stop).
 
-start_link(Name) ->
-    gen_server:start_link({local, Name}, ?MODULE, [], []).
+start_link(SfuData) ->
+    gen_server:start_link(?MODULE, SfuData, []).
 
-init(Id) ->
+init(_=#{id:=Id}) ->
     {ok, #state{id=Id, peers=dict:new()}}.
 
 handle_call({connect,ConnectParams=#{peer_id:=PeerId}},From,State)->
@@ -81,7 +81,7 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 compute_peer_data(ConnectParams,_State)->
-    #{peer_pid:=PeerPid,
+    #{  peer_pid:=PeerPid,
         peer_id:=PeerId,
         rtp_params:=#rtp_params{
             candidates=Candidates,

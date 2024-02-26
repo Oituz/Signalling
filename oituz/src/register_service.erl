@@ -46,19 +46,17 @@ handle_call(stop, _From, State) ->
  handle_call({get_sfu,SFUId},_From,State)->
      case cache:lookup_sfu(SFUId) of
         not_found->{ok,SfuPid}=sfu_sup:start(#{id=>SFUId}),
-                               Data=#{sfu_pid=>SfuPid},
-                               ok=cache:update_sfu(SFUId,Data),
+                              
+                               ok=cache:update_sfu(SFUId,SfuPid),
                                {reply,{ok,SfuPid},State};
         {ok,SfuPid}-> {reply,{ok,SfuPid},State}
      end;
 
 handle_call({get_peer,PeerId},_From,State)->
     case cache:lookup_peer(PeerId) of
-        not_found -> Rez=peer_sup:start(#{id=>PeerId}),
-                     io:format("after peer sup start ~p",[Rez]),
-                    {ok,PeerPid}=Rez,
-                     Data=#{sfu_pid=>PeerPid},
-                     ok=cache:update_peer(PeerId,Data),
+        not_found -> {ok,PeerPid}=peer_sup:start(#{id=>PeerId}),
+                   
+                     ok=cache:update_peer(PeerId,PeerPid),
                      {reply,{ok,PeerPid},State};
         {ok,PeerPid} -> {reply,{ok,PeerPid},State}
     end;

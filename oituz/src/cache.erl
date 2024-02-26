@@ -19,13 +19,13 @@ update_peer(Id,Pid)->
    ok=pg:join(Id, Pid),
    ok.
 
--spec lookup_sfu(Id::integer())->{ok,Data::map()}|not_found.
+-spec lookup_sfu(Id::integer())->{ok,Pid::pid()}|not_found.
 lookup_sfu(Id)->
     case pg:get_members(Id) of
         [Pid] -> {ok,Pid};
         [] -> not_found
 end.
--spec update_sfu(Id::integer(),Data::map())->ok.
+-spec update_sfu(Id::integer(),Pid::pid())->ok.
 update_sfu(Id,Pid)->
     ok=pg:join(Id,Pid),
     ok.
