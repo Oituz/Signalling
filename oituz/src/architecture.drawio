@@ -1,0 +1,43 @@
+<mxfile host="65bd71144e">
+    <diagram id="bdQtkaOk1CpOSsuhfdta" name="Page-1">
+        <mxGraphModel dx="1051" dy="584" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="2" value="SFU" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#a20025;fontColor=#ffffff;strokeColor=#6F0000;" parent="1" vertex="1">
+                    <mxGeometry x="250" y="250" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="3" value="Peer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6a00ff;fontColor=#ffffff;strokeColor=#3700CC;" parent="1" vertex="1">
+                    <mxGeometry x="110" y="410" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="5" value="Peer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6a00ff;fontColor=#ffffff;strokeColor=#3700CC;" parent="1" vertex="1">
+                    <mxGeometry x="250" y="410" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="7" value="Peer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6a00ff;fontColor=#ffffff;strokeColor=#3700CC;" parent="1" vertex="1">
+                    <mxGeometry x="390" y="410" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="9" value="SFU" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#a20025;fontColor=#ffffff;strokeColor=#6F0000;" parent="1" vertex="1">
+                    <mxGeometry x="730" y="260" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="10" value="Peer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6a00ff;fontColor=#ffffff;strokeColor=#3700CC;" parent="1" vertex="1">
+                    <mxGeometry x="590" y="410" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="12" value="Peer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6a00ff;fontColor=#ffffff;strokeColor=#3700CC;" parent="1" vertex="1">
+                    <mxGeometry x="730" y="410" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="14" value="Peer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6a00ff;fontColor=#ffffff;strokeColor=#3700CC;" parent="1" vertex="1">
+                    <mxGeometry x="870" y="410" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="17" value="Register_service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#008a00;fontColor=#ffffff;strokeColor=#005700;" parent="1" vertex="1">
+                    <mxGeometry x="720" y="100" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="21" value="SFU_Sup" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0050ef;fontColor=#ffffff;strokeColor=#001DBC;" parent="1" vertex="1">
+                    <mxGeometry x="480" y="170" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="22" value="Peer_Sup" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0050ef;fontColor=#ffffff;strokeColor=#001DBC;" parent="1" vertex="1">
+                    <mxGeometry x="470" y="320" width="120" height="60" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
