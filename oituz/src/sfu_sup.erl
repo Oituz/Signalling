@@ -9,7 +9,7 @@
 
 
 start(SFUData)->
-   supervisor:start_child(?MODULE, SFUData).
+   supervisor:start_child(?MODULE, [SFUData]).
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 

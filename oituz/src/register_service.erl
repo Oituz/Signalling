@@ -12,7 +12,7 @@
 
 -define(NAME, ?MODULE).
 -record(state, {sfumap}).
-
+-define(ADD_PREFIX(Prefix, Id), Prefix ++ integer_to_list(Id)).
 %---------------------------------API------------------------------------------------------
 
 
@@ -44,34 +44,41 @@ handle_call(stop, _From, State) ->
 
     
  handle_call({get_sfu,SFUId},_From,State)->
-     case cache:lookup_sfu(SFUId) of
-        not_found->{ok,SfuPid}=sfu_sup:start(#{id=>SFUId}),
-                              
-                               ok=cache:update_sfu(SFUId,SfuPid),
+     NormalizedId=?ADD_PREFIX("s", SFUId),
+     case cache:lookup_sfu(NormalizedId) of
+        not_found->{ok,SfuPid}=
+                               sfu_sup:start(#{id=>SFUId}),
+                                
+                               ok=cache:update_sfu(NormalizedId,SfuPid),
+                               io:format("after sfu creation"),
                                {reply,{ok,SfuPid},State};
         {ok,SfuPid}-> {reply,{ok,SfuPid},State}
      end;
 
 handle_call({get_peer,PeerId},_From,State)->
-    case cache:lookup_peer(PeerId) of
-        not_found -> {ok,PeerPid}=peer_sup:start(#{id=>PeerId}),
+    NormalizedId=?ADD_PREFIX("p", PeerId),
+    case cache:lookup_peer(NormalizedId) of
+        not_found -> {ok,PeerPid}=
+                                rtc_peer_sup:start(#{id=>PeerId}),
                    
-                     ok=cache:update_peer(PeerId,PeerPid),
-                     {reply,{ok,PeerPid},State};
+                                ok=cache:update_peer(NormalizedId,PeerPid),
+                                {reply,{ok,PeerPid},State};
         {ok,PeerPid} -> {reply,{ok,PeerPid},State}
     end;
 
 handle_call({remove_peer,PeerId},_From,State)->
+    NormalizedId=?ADD_PREFIX("p", PeerId),
     case cache:lookup_peer(PeerId) of
-        {ok,#{peer_pid := PeerPid }} -> cache:remove_peer(PeerId),
+        {ok,#{peer_pid := PeerPid }} -> cache:remove_peer(NormalizedId),
                                         erlang:exit(PeerPid, normal),
                                         {reply,ok,State};
         not_found -> {reply,ok,State}
     end;
 
 handle_call({remove_sfu,SfuId},_From,State)->
+    NormalizedId=?ADD_PREFIX("s", SfuId),
     case cache:lookup_sfu(SfuId) of
-        {ok,#{sfu_pid :=SFUPid }} -> cache:remove_sfu(SfuId),  
+        {ok,#{sfu_pid :=SFUPid }} -> cache:remove_sfu(NormalizedId),  
                                      erlang:exit(SFUPid,normal),
                                      {reply,ok,State};
         not_found -> {reply,ok,State}

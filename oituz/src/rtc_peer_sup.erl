@@ -1,4 +1,4 @@
--module(peer_sup).
+-module(rtc_peer_sup).
 -behaviour(supervisor).
 
 %% API
@@ -27,8 +27,8 @@ init(_Args) ->
 
     ChildSpecifications = [
         #{
-            id => peer,
-            start => {peer, start_link, []},
+            id => rtc_peer,
+            start => {rtc_peer, start_link, []},
             restart => permanent, % permanent | transient | temporary
             shutdown => 2000,
             type => worker, % worker | supervisor

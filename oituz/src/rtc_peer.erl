@@ -1,8 +1,8 @@
--module(peer).
+-module(rtc_peer).
 -behaviour(gen_server).
 
 %% API
--export([start_link/1,join_meeting/3,stream_data/2]).
+-export([start_link/1,join_meeting/3,publish_stream_data/2,broadcast_stream_data/2]).
 -export([update_candidates/2,update_constraints/2,update_tracks/2]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 -record(state, {
@@ -21,19 +21,22 @@ join_meeting(PeerId,MeetingId,RTPParams)->
 
 -spec update_candidates(PeerPid::pid(),Candidates::[rtp:ice_candidate()])->ok.
 update_candidates(PeerPid,Candidates)->
-    gen_server:cast(PeerPid,{update_candidates,Candidates}).
+    gen_server:cast(PeerPid,{caller_message,{update_candidates,Candidates}}).
 
 -spec update_tracks(PeerPid::pid(),Tracks::[rtp:track()])->ok.
 update_tracks(PeerPid,Tracks)->
-    gen_server:cast(PeerPid,{update_tracks,Tracks}).
+    gen_server:cast(PeerPid,{caller_message,{update_tracks,Tracks}}).
 
 -spec update_constraints(PeerPid::pid(),Constraints::[rtp:constraint()])->ok.
 update_constraints(PeerPid,Constraints)->
-    gen_server:cast(PeerPid,{update_constraints,Constraints}).
--spec stream_data(PeerPid::pid(),StreamData::binary())->ok.
-stream_data(PeerPid,StreamData)->
-    gen_server:cast(PeerPid,{stream_data,StreamData}).
+    gen_server:cast(PeerPid,{caller_message,{update_constraints,Constraints}}).
+-spec publish_stream_data(PeerPid::pid(),StreamData::binary())->ok.
+publish_stream_data(PeerPid,StreamData)->
+    gen_server:cast(PeerPid,{caller_message,{publish_stream_data,StreamData}}).
 
+-spec broadcast_stream_data(PeerPid::pid(),StreamData::binary())->ok.
+broadcast_stream_data(PeerPid,StreamData)->
+    gen_server:cast(PeerPid,{sfu_message,{broadcast_stream_data,StreamData}}).
 init(_=#{id:=Id}) ->
     {ok, #state{id=Id}}.
 
@@ -56,6 +59,8 @@ handle_cast({caller_message,{update_constraints,Constraints}},State=#{id:=Id,sfu
     ok=sfu:update_constraints(SfuPid,Message),
     {noreply,State};
 
+handle_cast({sfu_message,{broadcast_stream_data,StreamData}},State)->
+    {noreply,State};
 
 
 handle_cast(_Msg, State) ->
@@ -65,8 +70,11 @@ handle_cast(_Msg, State) ->
 
 handle_call({caller_message,{join_meeting,#{meeting_id:=MeetingId,rtp_params:=RTPParams}}},_From,State)->
     {ok,SfuPid}=register_service:get_sfu(MeetingId),
-    ConnectData=#{peerId =>State#state.id,sfu_pid=>SfuPid,rtp_params=>RTPParams},
-    Result=sfu:connect(SfuPid,ConnectData),
+    ConnectData=#{peerId =>State#state.id,peer_pid=>self(),rtp_params=>RTPParams},
+    Result=case sfu:connect(SfuPid,ConnectData) of
+                ok -> {ok,self()};
+                {error,Reason} -> {error,Reason}
+            end,
     {reply,Result,State#state{sfu_pid = SfuPid}};
    
 

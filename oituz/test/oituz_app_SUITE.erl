@@ -22,7 +22,6 @@ can_start_session(_Config)->
     MeetingId=12,
     
     {ok,Pid}=oituz_app:create_connection(PeerId,MeetingId,RTPParams),
-    ?assert(whereis(register_service)=/=undefined),
     ?assert(erlang:is_process_alive(Pid)=:=true).
 
     

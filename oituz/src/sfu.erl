@@ -45,8 +45,8 @@ start_link(SfuData) ->
 init(_=#{id:=Id}) ->
     {ok, #state{id=Id, peers=dict:new()}}.
 
-handle_call({connect,ConnectParams=#{peer_id:=PeerId}},From,State)->
-    PeerData=compute_peer_data(ConnectParams#{peer_pid:=From},State),
+handle_call({connect,ConnectParams=#{peer_id:=PeerId}},_From,State)->
+    PeerData=compute_peer_data(ConnectParams,State),
     {reply,ok,State#state{peers = dict:store(PeerId, PeerData, State#state.peers)}};
 handle_call(stop, _From, State) ->
     {stop, normal, stopped, State};

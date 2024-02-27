@@ -48,8 +48,8 @@ init([]) ->
           modules => [sfu_sup]
         },
          #{
-          id => peer_sup,
-          start=>{peer_sup,start_link,[]},
+          id => rtc_peer_sup,
+          start=>{rtc_peer_sup,start_link,[]},
           restart=>permanent,
           shutdown=>1000,
           type=>worker,
