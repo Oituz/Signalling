@@ -1,0 +1,4 @@
+- to take into account furhter developments
+  -adding p2p , mcu capabilities , and auto change topology based on number of participants
+  -adding simulcast (providing multiple streams of data from the sfu , and peers choosing the desired mode)
+  -adding rtp_sessions for each stream

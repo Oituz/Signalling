@@ -1,15 +1,10 @@
--module(sfu_sup).
+-module(rtp_session_sup).
 -behaviour(supervisor).
 
 %% API
 -export([start_link/0]).
 -export([init/1]).
--export([start/1]).
 
-
-
-start(SFUParams)->
-   supervisor:start_child(?MODULE, [SFUParams]).
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
@@ -21,13 +16,12 @@ init(_Args) ->
 
     ChildSpecifications = [
         #{
-            id => sfu,
-            start => {sfu, start_link, []},
+            id => rtp_session,
+            start => {rtp_session, start_link, []},
             restart => permanent, % permanent | transient | temporary
             shutdown => 2000,
             type => worker, % worker | supervisor
-            modules => [sfu]
+            modules => [rtp_session]
         }
     ],
-
-    {ok, {SupervisorSpecification, ChildSpecifications}}.
+{ok, {SupervisorSpecification, ChildSpecifications}}.

@@ -36,11 +36,11 @@ publish_stream_data(PeerPid,StreamData)->
 
 -spec broadcast_stream_data(PeerPid::pid(),StreamData::binary())->ok.
 broadcast_stream_data(PeerPid,StreamData)->
-    gen_server:cast(PeerPid,{sfu_message,{broadcast_stream_data,StreamData}}).
+    gen_server:cast(PeerPid,{multimedia_session_message,{broadcast_stream_data,StreamData}}).
 init(_=#{id:=Id}) ->
     {ok, #state{id=Id}}.
 
-handle_cast({stream_data,StreamData},State) when erlang:is_binary(StreamData)->
+handle_cast({caller_message,{stream_data,StreamData}},State) when erlang:is_binary(StreamData)->
     {noreply,State};
 
 
@@ -59,7 +59,7 @@ handle_cast({caller_message,{update_constraints,Constraints}},State=#{id:=Id,sfu
     ok=sfu:update_constraints(SfuPid,Message),
     {noreply,State};
 
-handle_cast({sfu_message,{broadcast_stream_data,StreamData}},State)->
+handle_cast({multimedia_session_message,{broadcast_stream_data,StreamData}},State) when erlang:is_binary(StreamData)->
     {noreply,State};
 
 

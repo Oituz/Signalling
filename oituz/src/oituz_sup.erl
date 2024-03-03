@@ -40,12 +40,12 @@ init([]) ->
           modules=>[pg]
         },
         #{
-          id => sfu_sup,
-          start=>{sfu_sup,start_link,[]},
+          id => multimedia_session_sup,
+          start=>{multimedia_session_sup,start_link,[]},
           restart=>permanent,
           shutdown=>1000,
           type=>worker,
-          modules => [sfu_sup]
+          modules => [multimedia_session_sup]
         },
          #{
           id => rtc_peer_sup,

@@ -47,7 +47,7 @@ handle_call(stop, _From, State) ->
      NormalizedId=?ADD_PREFIX("s", SFUId),
      case cache:lookup_sfu(NormalizedId) of
         not_found->{ok,SfuPid}=
-                               sfu_sup:start(#{id=>SFUId}),
+                               sfu:start(#{id=>SFUId}),
                                 
                                ok=cache:update_sfu(NormalizedId,SfuPid),
                                io:format("after sfu creation"),

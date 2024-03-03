@@ -12,7 +12,17 @@
     pid,
     candidates,
     tracks,
-    constraints
+
+
+    constraints,
+    sessions
+}).
+
+-record(session_data,{
+    ssrc,
+    trackname,
+    session_pid,
+    originating_peer_id
 }).
 -spec connect(SfuPid::pid(),ConnectParams)->ok | {error,Reason::any()} 
     when
@@ -47,7 +57,10 @@ init(_=#{id:=Id}) ->
 
 handle_call({connect,ConnectParams=#{peer_id:=PeerId}},_From,State)->
     PeerData=compute_peer_data(ConnectParams,State),
-    {reply,ok,State#state{peers = dict:store(PeerId, PeerData, State#state.peers)}};
+    Sessions=generate_sessions(PeerData),
+    SessionMap=dict:new(),
+    
+    {reply,{ok,,State#state{peers = dict:store(PeerId, PeerData, State#state.peers)}};
 handle_call(stop, _From, State) ->
     {stop, normal, stopped, State};
 
@@ -92,5 +105,17 @@ compute_peer_data(ConnectParams,_State)->
 
 inner_update_candidates(Candidates,PeerData)->
     PeerData#peer_data{candidates = Candidates}.
+
+generate_sessions(PeerData=#peer_data{tracks = Tracks})->
+    Sessions=[generate_session(T)||T<-Tracks],
+    Sessions.
+
+generate_session(SessionData=#{name :=Name , peer_id := PeerId})->
+    SSRC=generate_ssrc(),
+    {ok,SessionPid}=rtp_session:start(#{sourcing_peer_id:=PeerId,ssrc:=SSRC}),
+    {ok,#{pid=>SessionPid,ssrc=>SSRC}}.
+
+generate_ssrc()->
+    rand:uniform().
 
 
