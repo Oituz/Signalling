@@ -19,8 +19,7 @@
 
 -record(rtp_params,{
         candidates::[ice_candidate()],
-        tracks::[track()],
-        constraints::[media_constraint()]
+        tracks::[track()]
 }).
 
 -type rtp_params()::#rtp_params{
@@ -30,18 +29,24 @@
 }.
 
 -record(media_constraint,{
-   type::string()
+   type::string(),
+   value::any()
 }).
 -type media_constraint()::#media_constraint{
-    type::string()
+    type::string(),
+    value::any()
 }.
 
 -record(track,{
-        type::string()
+        id::string(),
+        type::string(),
+        constraints::[media_constraint()]
 }).
 
 -type track()::#track{
-        type::string()
+        id::string(),
+        type::string(),
+        constraints::[media_constraint()]
 }.
 
 

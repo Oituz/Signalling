@@ -3,7 +3,7 @@
 -include("../include/rtp.hrl").
 %% API
 -export([start/1, stop/1, start_link/1,connect/2]).
--export([update_candidates/2,update_tracks/2,update_constraints/2]).
+-export([update_candidates/2,update_tracks/2]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 -record(state, {id,peers}).
 
@@ -12,9 +12,6 @@
     pid,
     candidates,
     tracks,
-
-
-    constraints,
     sessions
 }).
 
@@ -37,10 +34,6 @@ connect(Pid,ConnectData)->
 update_candidates(SfuPid,_PeerData=#{peer_id:=PeerId,candidates:=Candidates})->
     gen_server:cast(SfuPid,{update_candidates,#{peer_id=>PeerId,candidates=>Candidates}}).
 
--spec update_constraints(SfuPid::pid(),PeerData::#{peer_id=>PeerId::integer()|string()|binary(),constraints=>[rtp:constraint()]})->ok.
-update_constraints(SfuPid,_PeerData=#{peer_id:=PeerId,constraints:=Constraints})->
-    gen_server:cast(SfuPid,{update_constraints,#{peer_id=>PeerId,constraints=>Constraints}}).
-
 -spec update_tracks(SfuPid::pid(),PeerData::#{peer_id=>PeerId::integer()|string()|binary(),tracks=>[rtp:track()]})->ok.
 update_tracks(SfuPid,_PeerData=#{peer_id:=PeerId,tracks:=Tracks})->
     gen_server:cast(SfuPid,{update_tracks,#{peer_id=>PeerId,tracks=>Tracks}}).
@@ -57,10 +50,10 @@ init(_=#{id:=Id}) ->
 
 handle_call({connect,ConnectParams=#{peer_id:=PeerId}},_From,State)->
     PeerData=compute_peer_data(ConnectParams,State),
-    Sessions=generate_sessions(PeerData),
-    SessionMap=dict:new(),
+    {ok,Sessions}=generate_sessions(PeerData),
+    Reply={ok,#{track_map=>}}
     
-    {reply,{ok,,State#state{peers = dict:store(PeerId, PeerData, State#state.peers)}};
+    {reply,{ok,,State#state{peers = dict:store(PeerId, PeerData, State#state.peers)};
 handle_call(stop, _From, State) ->
     {stop, normal, stopped, State};
 
@@ -77,8 +70,7 @@ handle_cast({update_candidates,#{peer_id:=PeerId,candidates:=Candidates}},State)
                         {noreply,State#state{peers = NewPeers}}
     end;
    
-handle_cast({update_constraints,#{peer_id:=PeerId,constraints:=Constraints}},State)->
-    {noreply,State}; 
+
 handle_cast({update_tracks,#{peer_id:=PeerId,tracks:=Tracks}},State)->
     {noreply,State};     
 handle_cast(_Msg, State) ->
@@ -98,22 +90,21 @@ compute_peer_data(ConnectParams,_State)->
         peer_id:=PeerId,
         rtp_params:=#rtp_params{
             candidates=Candidates,
-            constraints=Constraints,
             tracks=Tracks}}
     =ConnectParams,
-    #peer_data{id = PeerId,pid = PeerPid, candidates=Candidates, tracks = Tracks, constraints = Constraints}.
+    #peer_data{id = PeerId,pid = PeerPid, candidates=Candidates, tracks = Tracks}.
 
 inner_update_candidates(Candidates,PeerData)->
     PeerData#peer_data{candidates = Candidates}.
 
-generate_sessions(PeerData=#peer_data{tracks = Tracks})->
+generate_sessions(_=#peer_data{tracks = Tracks})->
     Sessions=[generate_session(T)||T<-Tracks],
-    Sessions.
+    {ok,Sessions}.
 
-generate_session(SessionData=#{name :=Name , peer_id := PeerId})->
+generate_session(SessionData=#{name :=Name , peer_id := PeerId,track := Track=#track{},constraints:=Constraints})->
     SSRC=generate_ssrc(),
-    {ok,SessionPid}=rtp_session:start(#{sourcing_peer_id:=PeerId,ssrc:=SSRC}),
-    {ok,#{pid=>SessionPid,ssrc=>SSRC}}.
+    {ok,SessionPid}=rtp_session:start(#{sourcing_peer_id=>PeerId,ssrc=>SSRC,track=>Track,source_constraints=>Constraints}),
+    #{pid=>SessionPid,ssrc=>SSRC,track=>Track}.
 
 generate_ssrc()->
     rand:uniform().
