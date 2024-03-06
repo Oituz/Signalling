@@ -17,9 +17,15 @@
 -record(session_data,{
     ssrc,
     trackname,
-    session_pid,
-    originating_peer_id
+    rtp_session_pid,
+    source_peer_id
 }).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%--------------------------------------------------------------------- PUBLIC API -------------------------------------------------------------------------------------
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 -spec connect(SfuPid::pid(),ConnectParams)->ok | {error,Reason::any()} 
     when
         ConnectParams::#{
@@ -47,10 +53,16 @@ start_link(SfuData) ->
 init(_=#{id:=Id}) ->
     {ok, #state{id=Id, peers=dict:new()},sessions=dict:new()}.
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%% ---------------------------------------------------Callbacks----------------------------------------------------------------------
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
 handle_call({connect,ConnectParams=#{peer_id:=PeerId}},_From,State)->
     PeerData=compute_peer_data(ConnectParams,State),
     Sessions=generate_sessions(PeerData),
-    NewSessionMap=lists:foldl(fun(Item=#session_data{ssrc :=SSRC},Dict)->dict:store(SSRC,Item,Dict) end, State#state.sessions),
+    NewSessionMap=lists:foldl(fun(Item=#session_data{ssrc=SSRC},Dict)->dict:store(SSRC,Item,Dict) end, State#state.sessions),
     Reply={ok,#{track_map=>Sessions}},
     {reply,Reply,State#state{peers = dict:store(PeerId, PeerData, State#state.peers),sessions = NewSessionMap}};
 
@@ -63,7 +75,7 @@ handle_call(_Request, _From, State) ->
 handle_cast({update_candidates,#{peer_id:=PeerId,candidates:=Candidates}},State)->
     case dict:find(PeerId, State#state.peers) of
         error -> io:format("Could not find peer ~p",[PeerId]),
-                 {noreply,State};`
+                 {noreply,State};
                  
         {ok,PeerData}-> NewPeerData=inner_update_candidates(Candidates, PeerData),
                         NewPeers=dict:store(PeerId, NewPeerData,State#state.peers),
@@ -71,8 +83,15 @@ handle_cast({update_candidates,#{peer_id:=PeerId,candidates:=Candidates}},State)
     end;
    
 
-handle_cast({update_tracks,#{peer_id:=PeerId,tracks:=Tracks}},State)->
-    {noreply,State};     
+handle_cast({add_track,#{peer_id:=PeerId,track:=Track}},State)->
+    {noreply,State}; 
+        
+handle_cast({remove_track,#{peer_id:=PeerId,ssrc:=SSRC}},State)->
+    {noreply,State};        
+
+handle_cast({update_track,#{peer_id:=PeerId,track:=Track}},State)->
+    {noreply,State};
+
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -101,10 +120,11 @@ generate_sessions(_=#peer_data{tracks = Tracks})->
     Sessions=[generate_session(T)||T<-Tracks],
     {ok,Sessions}.
 
-generate_session(SessionData=#{name :=Name , peer_id := PeerId,track := Track=#track{},constraints:=Constraints})->
+generate_session(InputSessionData=#{peer_id := PeerId,track := Track=#track{},constraints:=Constraints})->
     SSRC=generate_ssrc(),
-    {ok,SessionPid}=rtp_session:start(#{sourcing_peer_id=>PeerId,ssrc=>SSRC,track=>Track,source_constraints=>Constraints}),
-    #{pid=>SessionPid,ssrc=>SSRC,track=>Track}.
+    {ok,RTPSessionPid}=rtp_session:start(#{source_peer_id=>PeerId,ssrc=>SSRC,track=>Track,source_constraints=>Constraints}),
+    InputSessionData=#session_data{ssrc=SSRC, source_peer_id = PeerId, trackname = Track#track.id,rtp_session_pid = RTPSessionPid},
+    InputSessionData.
 
 generate_ssrc()->
     rand:uniform().
