@@ -5,14 +5,13 @@
 -export([start/1, stop/1, start_link/1,connect/2]).
 -export([update_candidates/2,update_tracks/2]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
--record(state, {id,peers}).
+-record(state, {id,peers,sessions}).
 
 -record(peer_data,{
     id,
     pid,
     candidates,
-    tracks,
-    sessions
+    tracks
 }).
 
 -record(session_data,{
@@ -46,14 +45,15 @@ start_link(SfuData) ->
     gen_server:start_link(?MODULE, SfuData, []).
 
 init(_=#{id:=Id}) ->
-    {ok, #state{id=Id, peers=dict:new()}}.
+    {ok, #state{id=Id, peers=dict:new()},sessions=dict:new()}.
 
 handle_call({connect,ConnectParams=#{peer_id:=PeerId}},_From,State)->
     PeerData=compute_peer_data(ConnectParams,State),
-    {ok,Sessions}=generate_sessions(PeerData),
-    Reply={ok,#{track_map=>}}
-    
-    {reply,{ok,,State#state{peers = dict:store(PeerId, PeerData, State#state.peers)};
+    Sessions=generate_sessions(PeerData),
+    NewSessionMap=lists:foldl(fun(Item=#session_data{ssrc :=SSRC},Dict)->dict:store(SSRC,Item,Dict) end, State#state.sessions),
+    Reply={ok,#{track_map=>Sessions}},
+    {reply,Reply,State#state{peers = dict:store(PeerId, PeerData, State#state.peers),sessions = NewSessionMap}};
+
 handle_call(stop, _From, State) ->
     {stop, normal, stopped, State};
 
@@ -63,7 +63,7 @@ handle_call(_Request, _From, State) ->
 handle_cast({update_candidates,#{peer_id:=PeerId,candidates:=Candidates}},State)->
     case dict:find(PeerId, State#state.peers) of
         error -> io:format("Could not find peer ~p",[PeerId]),
-                 {noreply,State};
+                 {noreply,State};`
                  
         {ok,PeerData}-> NewPeerData=inner_update_candidates(Candidates, PeerData),
                         NewPeers=dict:store(PeerId, NewPeerData,State#state.peers),
