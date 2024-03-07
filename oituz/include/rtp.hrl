@@ -24,7 +24,6 @@
 
 -type rtp_params()::#rtp_params{
      candidates::[ice_candidate()],
-     constraints::[media_constraint()],
      tracks::[track()]
 }.
 

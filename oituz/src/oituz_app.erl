@@ -10,8 +10,9 @@
 -behaviour(application).
 -export([connect/3,
         update_candidates/2,
-        update_tracks/2,
-        update_media_constraints/2
+        add_track/2,
+        remove_track/2,
+        update_track/3
         ]).
 -export([start/2, stop/1]).
 
@@ -30,13 +31,18 @@ connect(PeerId,MeetingId,RTPParams)->
 update_candidates(PeerPid,Candidates)->
     rtc_peer:update_candidates(PeerPid,Candidates).
 
--spec update_tracks(PeerPid::pid(),Tracks::[rtp:track()])->ok.
-update_tracks(PeerPid,Tracks)->
-    rtc_peer:update_tracks(PeerPid,Tracks).
+-spec update_track(PeerPid::pid(),SSRC::integer(),Track::rtp:track())->ok.
+update_track(PeerPid,SSRC,Track)->
+    rtc_peer:update_track(PeerPid,SSRC,Track).
 
--spec update_media_constraints(PeerPid::pid(),Constraints::[rtp:constraint()])->ok.
-update_media_constraints(PeerPid,Constraints)->
-    rtc_peer:update_constraints(PeerPid,Constraints).
+-spec add_track(PeerPid::pid(),Track::rtp:track())->ok.
+add_track(PeerPid,Track)->
+    rtc_peer:add_track(PeerPid,Track).
+
+-spec remove_track(PeerPid::pid(),SSRC::integer())->ok.
+
+remove_track(PeerPid,SSRC)->
+    rtc_peer:remove_track(PeerPid,SSRC).
 stop(_State) ->
     ok.
 

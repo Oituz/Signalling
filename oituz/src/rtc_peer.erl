@@ -3,13 +3,17 @@
 
 %% API
 -export([start_link/1,join_meeting/3,publish_stream_data/2,broadcast_stream_data/2]).
--export([update_candidates/2,update_tracks/2]).
+
+-export([update_candidates/2,update_track/3,add_track/2,remove_track/2]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 -record(state, {
     id,
     sfu_pid=undefined
 }).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%----------------------------------------------------------- API -------------------------------------------------------------------------
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 start_link(PeerData) ->
     gen_server:start_link(?MODULE,PeerData,[]).
@@ -23,11 +27,17 @@ join_meeting(PeerId,MeetingId,RTPParams)->
 update_candidates(PeerPid,Candidates)->
     gen_server:cast(PeerPid,{caller_message,{update_candidates,Candidates}}).
 
--spec update_tracks(PeerPid::pid(),Tracks::[rtp:track()])->ok.
-update_tracks(PeerPid,Tracks)->
-    gen_server:cast(PeerPid,{caller_message,{update_tracks,Tracks}}).
+-spec update_track(PeerPid::pid(),SSRC::integer(),Track::rtp:track())->ok.
+update_track(PeerPid,SSRC,Track)->
+    gen_server:cast(PeerPid,{caller_message,{update_track,SSRC,Track}}).
 
+-spec add_track(PeerPid::pid(),Track::rtp:track())->ok.
+add_track(PeerPid,Track)->
+    gen_server:cast(PeerPid,{caller_message,{add_track,Track}}).
 
+-spec remove_track(PeerPid::pid(),SSRC::integer())->ok.
+remove_track(PeerPid,SSRC)->
+    gen_server:cast(PeerPid,{caller_message,{remove_track,SSRC}}).
 -spec publish_stream_data(PeerPid::pid(),StreamData::binary())->ok.
 publish_stream_data(PeerPid,StreamData)->
     gen_server:cast(PeerPid,{caller_message,{publish_stream_data,StreamData}}).
@@ -37,6 +47,11 @@ broadcast_stream_data(PeerPid,StreamData)->
     gen_server:cast(PeerPid,{multimedia_session_message,{broadcast_stream_data,StreamData}}).
 init(_=#{id:=Id}) ->
     {ok, #state{id=Id}}.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%--------------------------------------------- Callbacks ---------------------------------------------------------------------
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 handle_cast({caller_message,{stream_data,StreamData}},State) when erlang:is_binary(StreamData)->
     {noreply,State};
