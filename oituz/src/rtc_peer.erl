@@ -62,9 +62,9 @@ handle_cast({caller_message,{update_candidates,Candidates}},State=#{id:=Id,sfu_p
     ok=sfu:update_candidates(SfuPid,Message),
     {noreply,State};
 
-handle_cast({caller_message,{update_tracks,Tracks}},State=#{id:=Id,sfu_pid := SfuPid})->
-    Message=#{peer_id=>Id,tracks=>Tracks},
-    ok=sfu:update_tracks(SfuPid,Message),
+handle_cast({caller_message,{update_track,SSRC,Track}},State=#{id:=Id,sfu_pid := SfuPid})->
+    Message=#{ssrc=>SSRC,peer_id=>Id,track=>Track},
+    ok=sfu:update_track(SfuPid,Message),
     {noreply,State};
 
 handle_cast({multimedia_session_message,{broadcast_stream_data,StreamData}},State) when erlang:is_binary(StreamData)->

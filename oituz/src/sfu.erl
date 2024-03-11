@@ -5,7 +5,7 @@
 -export([start/1, stop/1, start_link/1,connect/2]).
 -export([update_candidates/2,update_tracks/2]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
--record(state, {id,peers,sessions}).
+-record(state, {id,peers,sessions,session_subscribers_map}).
 
 -record(peer_data,{
     id,
@@ -19,8 +19,8 @@
     trackname,
     rtp_session_pid,
     source_peer_id
+    
 }).
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %--------------------------------------------------------------------- PUBLIC API -------------------------------------------------------------------------------------
@@ -39,9 +39,9 @@ connect(Pid,ConnectData)->
 update_candidates(SfuPid,_PeerData=#{peer_id:=PeerId,candidates:=Candidates})->
     gen_server:cast(SfuPid,{update_candidates,#{peer_id=>PeerId,candidates=>Candidates}}).
 
--spec update_tracks(SfuPid::pid(),PeerData::#{peer_id=>PeerId::integer()|string()|binary(),tracks=>[rtp:track()]})->ok.
-update_tracks(SfuPid,_PeerData=#{peer_id:=PeerId,tracks:=Tracks})->
-    gen_server:cast(SfuPid,{update_tracks,#{peer_id=>PeerId,tracks=>Tracks}}).
+-spec update_track(SfuPid::pid(),PeerData::#{peer_id=>PeerId::integer()|string()|binary(),ssrc=>SSRC::integer(),track=>rtp:track()})->ok.
+update_track(SfuPid,_PeerData=#{peer_id:=PeerId,ssrc:=SSRC,track:=Track})->
+    gen_server:cast(SfuPid,{update_track,#{peer_id=>PeerId,ssrc=>SSRC,track=>Track}}).
 start(Args)->
     sfu_sup:start(Args).
 stop(Name) ->
@@ -51,7 +51,7 @@ start_link(SfuData) ->
     gen_server:start_link(?MODULE, SfuData, []).
 
 init(_=#{id:=Id}) ->
-    {ok, #state{id=Id, peers=dict:new()},sessions=dict:new()}.
+    {ok, #state{id=Id, peers=dict:new()},sessions=dict:new(),session_subscribers_map=dict:new()}.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -60,11 +60,12 @@ init(_=#{id:=Id}) ->
 
 
 handle_call({connect,ConnectParams=#{peer_id:=PeerId}},_From,State)->
-    PeerData=compute_peer_data(ConnectParams,State),
-    Sessions=generate_sessions(PeerData),
+    NewPeer=compute_peer_data(ConnectParams,State),
+    Sessions=generate_rtp_sessions(NewPeer),
+    [subscribe_peer_to_session(Peer,Session)||Peer<-State#state.peers,Session<-Sessions],
     NewSessionMap=lists:foldl(fun(Item=#session_data{ssrc=SSRC},Dict)->dict:store(SSRC,Item,Dict) end, State#state.sessions),
     Reply={ok,#{track_map=>Sessions}},
-    {reply,Reply,State#state{peers = dict:store(PeerId, PeerData, State#state.peers),sessions = NewSessionMap}};
+    {reply,Reply,State#state{peers = dict:store(PeerId, NewPeer, State#state.peers),sessions = NewSessionMap}};
 
 handle_call(stop, _From, State) ->
     {stop, normal, stopped, State};
@@ -89,7 +90,7 @@ handle_cast({add_track,#{peer_id:=PeerId,track:=Track}},State)->
 handle_cast({remove_track,#{peer_id:=PeerId,ssrc:=SSRC}},State)->
     {noreply,State};        
 
-handle_cast({update_track,#{peer_id:=PeerId,track:=Track}},State)->
+handle_cast({update_track,#{peer_id:=PeerId,ssrc:=SSRC,track:=Track}},State)->
     {noreply,State};
 
 handle_cast(_Msg, State) ->
@@ -116,11 +117,12 @@ compute_peer_data(ConnectParams,_State)->
 inner_update_candidates(Candidates,PeerData)->
     PeerData#peer_data{candidates = Candidates}.
 
-generate_sessions(_=#peer_data{tracks = Tracks})->
-    Sessions=[generate_session(T)||T<-Tracks],
+
+generate_rtp_sessions(_=#peer_data{tracks = Tracks})->
+    Sessions=[generate_rtp_session(T)||T<-Tracks],
     {ok,Sessions}.
 
-generate_session(InputSessionData=#{peer_id := PeerId,track := Track=#track{},constraints:=Constraints})->
+generate_rtp_session(InputSessionData=#{peer_id := PeerId,track := Track=#track{},constraints:=Constraints})->
     SSRC=generate_ssrc(),
     {ok,RTPSessionPid}=rtp_session:start(#{source_peer_id=>PeerId,ssrc=>SSRC,track=>Track,source_constraints=>Constraints}),
     InputSessionData=#session_data{ssrc=SSRC, source_peer_id = PeerId, trackname = Track#track.id,rtp_session_pid = RTPSessionPid},
@@ -128,5 +130,9 @@ generate_session(InputSessionData=#{peer_id := PeerId,track := Track=#track{},co
 
 generate_ssrc()->
     rand:uniform().
+
+subscribe_peer_to_session(_=#peer_data{pid = Pid},_=#session_data{rtp_session_pid = RtpSessionPid})->
+    rtp_session:add_subscriber(RtpSessionPid,#{peer_id=>Pid}).
+
 
 
