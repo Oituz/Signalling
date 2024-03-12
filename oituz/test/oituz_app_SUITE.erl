@@ -15,7 +15,6 @@ can_start_session(_Config)->
     application:ensure_started(oituz_app),
     RTPParams=#rtp_params{
         candidates=[#ice_candidate{}],
-        constraints=[#media_constraint{}],
         tracks=[#track{}]
     },
     PeerId=11,

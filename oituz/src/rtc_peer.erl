@@ -44,7 +44,7 @@ publish_stream_data(PeerPid,StreamData)->
 
 -spec broadcast_stream_data(PeerPid::pid(),StreamData::binary())->ok.
 broadcast_stream_data(PeerPid,StreamData)->
-    gen_server:cast(PeerPid,{multimedia_session_message,{broadcast_stream_data,StreamData}}).
+    gen_server:cast(PeerPid,{rtp_message,{broadcast_stream_data,StreamData}}).
 init(_=#{id:=Id}) ->
     {ok, #state{id=Id}}.
 
@@ -62,12 +62,17 @@ handle_cast({caller_message,{update_candidates,Candidates}},State=#{id:=Id,sfu_p
     ok=sfu:update_candidates(SfuPid,Message),
     {noreply,State};
 
+handle_cast({caller_message,{add_track,Track}},_=#state{id = Id,sfu_pid = SfuPid})->
+    sfu:add_track(SfuPid,Id,Track);
 handle_cast({caller_message,{update_track,SSRC,Track}},State=#{id:=Id,sfu_pid := SfuPid})->
     Message=#{ssrc=>SSRC,peer_id=>Id,track=>Track},
     ok=sfu:update_track(SfuPid,Message),
     {noreply,State};
 
-handle_cast({multimedia_session_message,{broadcast_stream_data,StreamData}},State) when erlang:is_binary(StreamData)->
+handle_cast({caller_message,{remove_track,SSRC}},_=#state{sfu_pid = SfuPid})->
+    sfu:remove_track(SfuPid,SSRC);
+
+handle_cast({rtp_message,{broadcast_stream_data,StreamData}},State) when erlang:is_binary(StreamData)->
     {noreply,State};
 
 
