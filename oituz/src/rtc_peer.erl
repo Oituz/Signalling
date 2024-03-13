@@ -60,14 +60,15 @@ handle_cast({caller_message,{stream_data,StreamData}},State) when erlang:is_bina
 
 
 handle_cast({caller_message,{update_candidates,Candidates}},State=#{id:=Id,sfu_pid := SfuPid})->
-    Message=#{peer_id=>Id,candidates=>Candidates},
+    Message=#update_candidates_params{peer_id=Id,candidates=Candidates},
     ok=sfu:update_candidates(SfuPid,Message),
     {noreply,State};
 
 handle_cast({caller_message,{add_track,Track}},_=#state{id = Id,sfu_pid = SfuPid})->
-    sfu:add_track(SfuPid,Id,Track);
-handle_cast({caller_message,{update_track,SSRC,Track}},State=#{id:=Id,sfu_pid := SfuPid})->
-    Message=#{ssrc=>SSRC,peer_id=>Id,track=>Track},
+    Message=#add_track_params{peer_id = Id,track = Track},
+    sfu:add_track(SfuPid,Message);
+handle_cast({caller_message,{update_track,SSRC,Track}},State=#{sfu_pid := SfuPid})->
+    Message=#update_track_params{ssrc=SSRC,track=Track},
     ok=sfu:update_track(SfuPid,Message),
     {noreply,State};
 
@@ -86,10 +87,7 @@ handle_cast(_Msg, State) ->
 handle_call({caller_message,{join_meeting,#{meeting_id:=MeetingId,rtp_params:=RTPParams}}},_From,State)->
     {ok,SfuPid}=register_service:get_sfu(MeetingId),
     ConnectData=#connect_params{peer_id = State#state.id, rtp_params=RTPParams},
-    Result=case sfu:connect(SfuPid,ConnectData) of
-                ok -> {ok,self()};
-                {error,Reason} -> {error,Reason}
-            end,
+    Result=sfu:connect(SfuPid,ConnectData),
     {reply,Result,State#state{sfu_pid = SfuPid}};
    
 

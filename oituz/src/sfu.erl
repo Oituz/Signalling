@@ -4,7 +4,7 @@
 -include("../include/domain.hrl").
 %% API
 -export([start/1, stop/1, start_link/1,connect/2]).
--export([update_candidates/2,update_track/2,add_track/3,remove_track/2]).
+-export([update_candidates/2,update_track/2,add_track/2,remove_track/2]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 -record(state, {
         id,
@@ -33,21 +33,21 @@
 %--------------------------------------------------------------------- PUBLIC API -------------------------------------------------------------------------------------
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
--spec connect(SfuPid::pid(),ConnectParams::rtp:connect_params())->ok | {error,Reason::any()}.
+-spec connect(SfuPid::pid(),ConnectParams::domain:connect_params())->{ok,domain:connect_response()} | {error,Reason::any()}.
 connect(Pid,ConnectData)->
     gen_server:call(Pid,{connect,ConnectData}).
 
--spec update_candidates(SfuPid::pid(),PeerData::#{peer_id=>PeerId::integer()|string()|binary(),candidates=>Candidates::[rtp:candidate()]})->ok.
-update_candidates(SfuPid,_PeerData=#{peer_id:=PeerId,candidates:=Candidates})->
-    gen_server:cast(SfuPid,{update_candidates,#{peer_id=>PeerId,candidates=>Candidates}}).
+-spec update_candidates(SfuPid::pid(),UpdateCandidatesParams::#update_candidates_params{})->ok.
+update_candidates(SfuPid,UpdateCandidatesParams)->
+    gen_server:cast(SfuPid,{update_candidates,UpdateCandidatesParams}).
 
--spec update_track(SfuPid::pid(),PeerData::#{peer_id=>PeerId::integer()|string()|binary(),ssrc=>SSRC::integer(),track=>rtp:track()})->ok.
-update_track(SfuPid,_Data=#{ssrc:=SSRC,track:=Track})->
-    gen_server:cast(SfuPid,{update_track,#{ssrc=>SSRC,track=>Track}}).
+-spec update_track(SfuPid::pid(),UpdateTrackParams::#update_track_params{})->ok.
+update_track(SfuPid,UpdateTrackParams)->
+    gen_server:cast(SfuPid,UpdateTrackParams).
 
--spec add_track(SfuPid::pid(),PeerId::integer(),Track::rtp:track())->ok.
-add_track(SfuPid,PeerId,Track)->
-    gen_server:cast(SfuPid,{add_track,PeerId,Track}).
+-spec add_track(SfuPid::pid(),AddTrackParams::domain:add_track_params())->ok.
+add_track(SfuPid,AddTrackParams)->
+    gen_server:cast(SfuPid,{add_track,AddTrackParams}).
 
 -spec remove_track(SfuPid::pid(),SSRC::any())->ok.
 remove_track(SfuPid,SSRC)->
@@ -68,7 +68,7 @@ init(_=#{id:=Id}) ->
 %%%% ---------------------------------------------------Callbacks----------------------------------------------------------------------
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
--spec compute_peer_data(ConnectParams::connect_params(),State::#state{})->{ok,#peer_state{}} | already_exists.
+-spec compute_peer_data(ConnectParams::domain:connect_params(),State::#state{})->{ok,#peer_state{}} | already_exists.
 compute_peer_data(_=#connect_params{peer_id = PeerId,rtp_params = RtpParams},_State)->
     case dict:find(PeerId,_State#state.peers) of
         {ok,_} -> already_exists;
@@ -103,17 +103,17 @@ subscribe_peer_to_session(_=#peer_state{pid = Pid,id =PeerId},SessionData=#rtp_s
 unsubscribe_peer_from_session()->ok.
 
 
-handle_connect(ConnectParams=#connect_params{peer_id=PeerId},State)->
-    NewPeer=compute_peer_data(ConnectParams,State),
+handle_connect(NewPeer,State)->
+   
     RTPSessions=generate_rtp_sessions(NewPeer),
     RTPSessionsWithSubscribers=[subscribe_peer_to_session(Peer,RTPSession)||Peer<-State#state.peers,RTPSession<-RTPSessions],
     NewRTPSessionMap=add_new_tracks_to_ssrc_session_map(RTPSessionsWithSubscribers, State#state.ssrc_session_map),
-    {ok,#{ssrc_session_map=>NewRTPSessionMap}}.
+    {ok,#{ssrc_session_map=>NewRTPSessionMap,new_peer=>NewPeer}}.
 
 handle_call({connect,ConnectParams},_From,State)->
-    {ok,#{ssrc_session_map=>RTPSessionMap}}=handle_connect(ConnectParams,State)
-    
-    {reply,{ok,#{ssrc_session_map=>NewRTPSessionMap}},State#state{peers = dict:store(PeerId, NewPeer, State#state.peers),ssrc_session_map = NewRTPSessionMap}};
+    NewPeer=compute_peer_data(ConnectParams,State),
+    {ok,#{ssrc_session_map:=RTPSessionMap,newpeer:=#peer_state{id = Id}}}=handle_connect(NewPeer,State),
+    {reply,{ok,#{ssrc_session_map=>RTPSessionMap}},State#state{peers = dict:store(Id, NewPeer, State#state.peers),ssrc_session_map = RTPSessionMap}};
 
 
 
@@ -124,7 +124,7 @@ handle_call(stop, _From, State) ->
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
-handle_cast({update_candidates,#{peer_id:=PeerId,candidates:=Candidates}},State)->
+handle_cast({update_candidates,#update_candidates_params{peer_id=PeerId,candidates=Candidates}},State)->
     case dict:find(PeerId, State#state.peers) of
         error -> io:format("Could not find peer ~p",[PeerId]),
                  {noreply,State};
@@ -135,7 +135,7 @@ handle_cast({update_candidates,#{peer_id:=PeerId,candidates:=Candidates}},State)
     end;
    
 
-handle_cast({add_track,#{peer_id:=PeerId,track:=Track}},State)->
+handle_cast({add_track,#add_track_params{peer_id=PeerId,track=Track}},State)->
     {noreply,State}; 
         
 handle_cast({remove_track,SSRC},State)->
