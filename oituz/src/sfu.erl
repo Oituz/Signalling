@@ -6,16 +6,20 @@
 -export([start/1, stop/1, start_link/1,connect/2]).
 -export([update_candidates/2,update_track/2,add_track/3,remove_track/2]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
--record(state, {id,peers,sessions}).
+-record(state, {
+        id,
+        peers,
+        peer_monitor_map,
+        ssrc_session_map}).
 
--record(peer_data,{
+-record(peer_state,{
     id,
     pid,
     candidates,
     tracks
 }).
 
--record(session_data,{
+-record(rtp_session_state,{
     ssrc,
     trackname,
     rtp_session_pid,
@@ -57,44 +61,61 @@ start_link(SfuData) ->
     gen_server:start_link(?MODULE, SfuData, []).
 
 init(_=#{id:=Id}) ->
-    {ok, #state{id=Id, peers=dict:new()},sessions=dict:new(),session_subscribers_map=dict:new()}.
+    {ok, #state{id=Id, peers=dict:new()},ssrc_session_map=dict:new(),session_subscribers_map=dict:new(),peer_monitor_map=dict:new()}.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%% ---------------------------------------------------Callbacks----------------------------------------------------------------------
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-compute_peer_data(ConnectParams,_State)->
-    #{ peer_pid:=PeerPid,
-        peer_id:=PeerId,
-        rtp_params:=#rtp_params{
-            candidates=Candidates,
-            tracks=Tracks}}
-    =ConnectParams,
-    #peer_data{id = PeerId,pid = PeerPid, candidates=Candidates, tracks = Tracks}.
-generate_rtp_sessions(Data=#peer_data{tracks = Tracks})->
-    Sessions=[generate_rtp_session(#{peer_id=>Data#peer_data.id,peer_pid=>Data#peer_data.pid,track=>Track})||Track<-Tracks],
+
+-spec compute_peer_data(ConnectParams::connect_params(),State::#state{})->{ok,#peer_state{}} | already_exists.
+compute_peer_data(_=#connect_params{peer_id = PeerId,rtp_params = RtpParams},_State)->
+    case dict:find(PeerId,_State#state.peers) of
+        {ok,_} -> already_exists;
+        error->
+                {ok,PeerPid}=register_service:get_peer(PeerId),
+                #rtp_params{candidates=Candidates,tracks=Tracks}=RtpParams,
+                {ok,#peer_state{id = PeerId,pid = PeerPid, candidates=Candidates, tracks = Tracks}}
+end.
+
+
+generate_rtp_sessions(Data=#peer_state{tracks = Tracks})->
+    Sessions=[generate_rtp_session(#{peer_id=>Data#peer_state.id,peer_pid=>Data#peer_state.pid,track=>Track})||Track<-Tracks],
     {ok,Sessions}.
 generate_rtp_session(InputSessionData=#{peer_id := PeerId,track := Track=#track{}})->
     SSRC=generate_ssrc(),
     {ok,RTPSessionPid}=rtp_session:start(#rtp_session_start_params{source_peer_id=PeerId,ssrc=SSRC,track=Track}),
-    InputSessionData=#session_data{ssrc=SSRC, source_peer_id = PeerId, trackname = Track#track.id,rtp_session_pid = RTPSessionPid,subscribers = []},
+    InputSessionData=#rtp_session_state{ssrc=SSRC, source_peer_id = PeerId, trackname = Track#track.id,rtp_session_pid = RTPSessionPid,subscribers = []},
     InputSessionData.
 
 generate_ssrc()->
     rand:uniform().
-
-subscribe_peer_to_session(_=#peer_data{pid = Pid,id =PeerId},SessionData=#session_data{rtp_session_pid = RtpSessionPid,subscribers = Subscribers})->
-    rtp_session:add_subscriber(RtpSessionPid,#{peer_id=>Pid}).
+subscribe_peer_to_session(_=#peer_state{pid = Pid,id =PeerId},SessionData=#rtp_session_state{ssrc = Ssrc,rtp_session_pid = RtpSessionPid,subscribers = Subscribers})->
+    case lists:filter(fun(P)->P=:=PeerId end, Subscribers) of
+        [_] -> SessionData;
+        [] ->   case rtp_session:add_subscriber(RtpSessionPid,#add_subscriber_params{peer_id = PeerId,peer_pid = Pid}) of
+                    ok -> SessionData#rtp_session_state{subscribers = [PeerId|Subscribers]};
+                    _ ->    io:format("Could not subscribe Peer ~p to Session ~p",[PeerId,Ssrc]),
+                            SessionData
+                end
+    end.
 
 unsubscribe_peer_from_session()->ok.
 
-handle_call({connect,ConnectParams=#connect_params{peer_id=PeerId}},_From,State)->
+
+handle_connect(ConnectParams=#connect_params{peer_id=PeerId},State)->
     NewPeer=compute_peer_data(ConnectParams,State),
-    NewRTPSessionsList=generate_rtp_sessions(NewPeer),
-    [subscribe_peer_to_session(Peer,RTPSession)||Peer<-State#state.peers,RTPSession<-NewRTPSessionsList],
-    NewRTPSessionMap=store_new_rtp_sessions(NewRTPSessionsList, State#state.sessions),
-    Reply={ok,#{ssrc_session_map=>NewRTPSessionMap}},
-    {reply,Reply,State#state{peers = dict:store(PeerId, NewPeer, State#state.peers),sessions = NewRTPSessionMap}};
+    RTPSessions=generate_rtp_sessions(NewPeer),
+    RTPSessionsWithSubscribers=[subscribe_peer_to_session(Peer,RTPSession)||Peer<-State#state.peers,RTPSession<-RTPSessions],
+    NewRTPSessionMap=add_new_tracks_to_ssrc_session_map(RTPSessionsWithSubscribers, State#state.ssrc_session_map),
+    {ok,#{ssrc_session_map=>NewRTPSessionMap}}.
+
+handle_call({connect,ConnectParams},_From,State)->
+    {ok,#{ssrc_session_map=>RTPSessionMap}}=handle_connect(ConnectParams,State)
+    
+    {reply,{ok,#{ssrc_session_map=>NewRTPSessionMap}},State#state{peers = dict:store(PeerId, NewPeer, State#state.peers),ssrc_session_map = NewRTPSessionMap}};
+
+
 
 %------------------------------------------------------------------------------------------------------------------------------
 handle_call(stop, _From, State) ->
@@ -135,17 +156,17 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-store_new_rtp_sessions(NewSessionList,ExistingSessions)->
+add_new_tracks_to_ssrc_session_map(NewSessionList,ExistingSessions)->
     NewSessionMap=lists:foldl(
         fun(Item,Dict)->
-            #session_data{ssrc = SSRC}=Item,
+            #rtp_session_state{ssrc = SSRC}=Item,
             dict:store(SSRC, Item, Dict)
         end,
         ExistingSessions, NewSessionList),
     NewSessionMap.
 
 inner_update_candidates(Candidates,PeerData)->
-    PeerData#peer_data{candidates = Candidates}.
+    PeerData#peer_state{candidates = Candidates}.
 
 
 

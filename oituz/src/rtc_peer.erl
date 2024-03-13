@@ -1,5 +1,7 @@
 -module(rtc_peer).
 -behaviour(gen_server).
+-include("../include/rtp.hrl").
+-include("../include/domain.hrl").
 
 %% API
 -export([start_link/1,join_meeting/3,publish_stream_data/2,broadcast_stream_data/2]).
@@ -18,7 +20,7 @@
 start_link(PeerData) ->
     gen_server:start_link(?MODULE,PeerData,[]).
 
--spec join_meeting(PeerId::integer()|string(),MeetingId::integer()|string(),RTPParams::rtp:rtp_params())->{ok,PeerPid::pid()} | {error,Reason::any()}.
+-spec join_meeting(PeerId::peer_id(),MeetingId::meeting_id(),RTPParams::rtp:rtp_params())->{ok,PeerPid::pid()} | {error,Reason::any()}.
 join_meeting(PeerId,MeetingId,RTPParams)->
     {ok,PeerPid}=register_service:get_peer(PeerId),
     gen_server:call(PeerPid,{caller_message,{join_meeting,#{meeting_id=>MeetingId,rtp_params=>RTPParams}}}).
@@ -27,7 +29,7 @@ join_meeting(PeerId,MeetingId,RTPParams)->
 update_candidates(PeerPid,Candidates)->
     gen_server:cast(PeerPid,{caller_message,{update_candidates,Candidates}}).
 
--spec update_track(PeerPid::pid(),SSRC::integer(),Track::rtp:track())->ok.
+-spec update_track(PeerPid::pid(),SSRC::ssrc(),Track::rtp:track())->ok.
 update_track(PeerPid,SSRC,Track)->
     gen_server:cast(PeerPid,{caller_message,{update_track,SSRC,Track}}).
 
@@ -35,7 +37,7 @@ update_track(PeerPid,SSRC,Track)->
 add_track(PeerPid,Track)->
     gen_server:cast(PeerPid,{caller_message,{add_track,Track}}).
 
--spec remove_track(PeerPid::pid(),SSRC::integer())->ok.
+-spec remove_track(PeerPid::pid(),SSRC::ssrc())->ok.
 remove_track(PeerPid,SSRC)->
     gen_server:cast(PeerPid,{caller_message,{remove_track,SSRC}}).
 -spec publish_stream_data(PeerPid::pid(),StreamData::binary())->ok.
@@ -83,7 +85,7 @@ handle_cast(_Msg, State) ->
 
 handle_call({caller_message,{join_meeting,#{meeting_id:=MeetingId,rtp_params:=RTPParams}}},_From,State)->
     {ok,SfuPid}=register_service:get_sfu(MeetingId),
-    ConnectData=#{peerId =>State#state.id,peer_pid=>self(),rtp_params=>RTPParams},
+    ConnectData=#connect_params{peer_id = State#state.id, rtp_params=RTPParams},
     Result=case sfu:connect(SfuPid,ConnectData) of
                 ok -> {ok,self()};
                 {error,Reason} -> {error,Reason}

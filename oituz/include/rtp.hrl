@@ -1,5 +1,12 @@
 
--export_type([track/0,media_constraint/0,ice_candidate/0,track/0,rtp_params/0]).
+-export_type([
+track/0,
+media_constraint/0,
+ice_candidate/0,track/0,
+rtp_params/0,
+peer_id/0,
+meeting_id/0,
+ssrc/0]).
 
 
 -record(ice_candidate,{
@@ -47,6 +54,11 @@
         type::string(),
         constraints::[media_constraint()]
 }.
+
+-type peer_id()::integer().
+-type meeting_id()::integer().
+-type ssrc()::integer().
+
 
 
 

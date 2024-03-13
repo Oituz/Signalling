@@ -19,7 +19,7 @@
 start(_StartType, _StartArgs) ->
     oituz_sup:start_link().
 
--spec connect(PeerId::integer(),MeetingId::integer(),RTPParams::rtp:rtp_params())->{ok,PeerProcess::pid()}|{error,Reason::any()}.
+-spec connect(PeerId::peer_id(),MeetingId::meeting_id(),RTPParams::rtp:rtp_params())->{ok,PeerProcess::pid()}|{error,Reason::any()}.
 connect(PeerId,MeetingId,RTPParams)->
     case rtc_peer:join_meeting(PeerId,MeetingId,RTPParams) of
         {ok,PeerPid} -> {ok,PeerPid};
@@ -31,7 +31,7 @@ connect(PeerId,MeetingId,RTPParams)->
 update_candidates(PeerPid,Candidates)->
     rtc_peer:update_candidates(PeerPid,Candidates).
 
--spec update_track(PeerPid::pid(),SSRC::integer(),Track::rtp:track())->ok.
+-spec update_track(PeerPid::pid(),SSRC::ssrc(),Track::rtp:track())->ok.
 update_track(PeerPid,SSRC,Track)->
     rtc_peer:update_track(PeerPid,SSRC,Track).
 
@@ -39,7 +39,7 @@ update_track(PeerPid,SSRC,Track)->
 add_track(PeerPid,Track)->
     rtc_peer:add_track(PeerPid,Track).
 
--spec remove_track(PeerPid::pid(),SSRC::integer())->ok.
+-spec remove_track(PeerPid::pid(),SSRC::ssrc())->ok.
 
 remove_track(PeerPid,SSRC)->
     rtc_peer:remove_track(PeerPid,SSRC).

@@ -4,6 +4,7 @@
         add_subscriber_params/0,
         rtp_session_start_params/0]).
 -include("../include/rtp.hrl").
+
 -type add_subscriber_params()::#add_subscriber_params{
     peer_id::any(),
     peer_pid::pid()
@@ -28,6 +29,10 @@
 -type connect_params()::#connect_params{
     peer_id::integer() | string() | binary(),
     rtp_params::rtp:rtp_params()
+}.
+
+-type connect_response()::#connect_response{
+    ssrc_session_map::map()
 }.
 -record(connect_params,{
     peer_id::integer(),
