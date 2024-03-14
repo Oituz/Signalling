@@ -37,11 +37,11 @@
 connect(Pid,ConnectData)->
     gen_server:call(Pid,{connect,ConnectData}).
 
--spec update_candidates(SfuPid::pid(),UpdateCandidatesParams::#update_candidates_params{})->ok.
+-spec update_candidates(SfuPid::pid(),UpdateCandidatesParams::domain:update_candidates_params())->ok.
 update_candidates(SfuPid,UpdateCandidatesParams)->
     gen_server:cast(SfuPid,{update_candidates,UpdateCandidatesParams}).
 
--spec update_track(SfuPid::pid(),UpdateTrackParams::#update_track_params{})->ok.
+-spec update_track(SfuPid::pid(),UpdateTrackParams::domain:update_track_params())->ok.
 update_track(SfuPid,UpdateTrackParams)->
     gen_server:cast(SfuPid,UpdateTrackParams).
 
@@ -49,7 +49,7 @@ update_track(SfuPid,UpdateTrackParams)->
 add_track(SfuPid,AddTrackParams)->
     gen_server:cast(SfuPid,{add_track,AddTrackParams}).
 
--spec remove_track(SfuPid::pid(),SSRC::any())->ok.
+-spec remove_track(SfuPid::pid(),SSRC::domain:ssrc())->ok.
 remove_track(SfuPid,SSRC)->
     gen_server:cast(SfuPid,{remove_track,SSRC}).
 start(Args)->
@@ -105,6 +105,8 @@ unsubscribe_peer_from_session()->ok.
 
 handle_connect(NewPeer,State)->
    
+    PeerRef=erlang:monitor(process,NewPeer#peer_state.pid),
+    dict:store(NewPeer#peer_state., Val, D0)
     RTPSessions=generate_rtp_sessions(NewPeer),
     RTPSessionsWithSubscribers=[subscribe_peer_to_session(Peer,RTPSession)||Peer<-State#state.peers,RTPSession<-RTPSessions],
     NewRTPSessionMap=add_new_tracks_to_ssrc_session_map(RTPSessionsWithSubscribers, State#state.ssrc_session_map),

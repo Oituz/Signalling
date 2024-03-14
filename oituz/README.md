@@ -1,7 +1,9 @@
-signalling
+Oituz framework
 =====
 
-An OTP application
+
+WebRTC native Erlang framework for realtime communication implementing Selective Forwarding Unit (SFU) topology
+ 
 
 Build
 -----
